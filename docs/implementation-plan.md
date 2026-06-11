@@ -172,21 +172,59 @@ export interface IPerformanceSource {
 
 ## Phase 3 — Soft-res tracking  ← first ship-to-guild milestone
 
-### Step 3.1 — CharacterResolver
-- `services/character-resolver.ts`, pure function core:
-  1. Exact match on `characters.name`.
-  2. Match on `character_aliases.alias` (these are confirmed → treat as exact).
-  3. Case/diacritic-insensitive match (normalize with NFD + strip combining marks, lowercase).
-  4. Levenshtein ≤ 2 → return a **suggestion** (`{ kind: 'suggested', characterId, distance }`), never auto-link.
-  5. Otherwise `{ kind: 'unmatched' }`.
-- Implement Levenshtein in-house (~20 lines; no dependency — KISS).
-- Unit tests: exact, alias, `Thûnderfurry` → diacritic tier, one-typo → suggestion, garbage → unmatched, and the guarantee that a suggestion is never returned when an exact/alias hit exists.
-- **Accept:** all resolver tests green; resolver has no Prisma import (takes a candidate list / lookup functions as input).
+> **Deviation from original plan (2026-06-11, recorded during implementation).**
+> The original Step 3.1 specified a 5-tier fuzzy `CharacterResolver` (exact →
+> alias → diacritic → Levenshtein → unmatched) on the assumption that a softres
+> reservation only carries a `rawName` string. Inspecting the **live softres.it
+> API** (`GET https://softres.it/api/raid/{id}`, fixture in
+> `tests/fixtures/softres/raid.json`) showed each reservation also carries
+> **`dId`** — the reserver's Discord id (softres requires Discord login) — plus
+> `class` and an `items` **array** (not a singular `itemId`), and a **numeric**
+> `spec` id (e.g. `92`), not a spec name. `dId` is the same strong key auto-claim
+> already uses. The resolver design changed accordingly (Steps 3.1/3.4 below).
 
-### Step 3.2 — softres.it adapter
-- `softres/adapter.ts` implements `IReserveSource`. **Record a real response into `tests/fixtures/softres/` first**, then write the mapper: per reservation → `rawName`, `itemId`.
-- Officer flow groundwork: a pure helper `parseSoftresUrl(url): { softresId }` with tests (handles full URLs and bare IDs).
-- **Accept:** mapper + URL parser tests green against fixtures.
+### Step 3.1 — Reservation resolution (dId-first, link-only) — DONE
+- **No standalone fuzzy `CharacterResolver`.** Resolution lives in
+  `services/sync-softres-service.ts#syncSoftres` and is **link-only** — it never
+  creates a `Character`. Reason: a reservation has no honest `spec`/`mainRole`
+  (numeric spec id; no role at all), and `ClaimInput`/`Character` require both
+  non-null. Fabricating `mainRole` (Warrior → Tank-or-DPS is undecidable) would
+  poison WCL role-matching, the roster, and achievements. Character creation
+  stays an **officer queue action** (Step 3.4), where a real spec/role is given.
+- Resolution tiers (pure, over injected `SoftresSyncStore` ports — no Prisma):
+  1. Exact match on `characters.name`, or confirmed `character_aliases.alias`
+     (the `@unique` name **is** the strong link) → `matched`, set `characterId`.
+  2. Else, via `dId`: if the reserver owns **exactly one** character whose name
+     differs, store it as `suggestedCharacterId` → `suggested` (the typo bridge,
+     e.g. "Skreemo" → their "Skreamo"). This **replaces** the deferred
+     Levenshtein/diacritic tiers — dId is a stronger signal than edit distance.
+  3. Else → `unmatched` (officer queue). Ambiguous (reserver owns several
+     characters) is left unmatched so the queue can show their chars as
+     candidates rather than guess.
+- **Deferred (not built):** Levenshtein/diacritic string matching, and
+  auto-creating never-claimed alts from a reservation (needs a softres
+  spec-id → {spec, role} map; role isn't always derivable; fixture is n=1 so the
+  map can't be validated yet). Revisit only if a real need appears.
+- Tests: `tests/unit/sync-softres-service.test.ts` — exact, alias, dId-suggest,
+  ambiguous→unmatched, no-match→unmatched, plus the idempotency cases in 3.4.
+- **Accept:** ✅ resolver tests green; logic has no Prisma import (ports injected).
+
+### Step 3.2 — softres.it adapter — DONE
+- `softres/adapter.ts` implements `IReserveSource`. Real response recorded into
+  `tests/fixtures/softres/raid.json` first. Mapper maps per reservation →
+  `rawName`, `rawClass`, `discordId` (from `dId`; `"0"`/absent → null), `items[]`
+  (the array, not a single id), `reservedAt` (from `updated`/`created`).
+- The read endpoint is **public** (returns 200 unauthenticated), so `IReserveSource`'s
+  `token?` is unused for reads.
+- `parseSoftresUrl(url): { softresId } | null` — handles full URLs, `/edit` URLs,
+  scheme-less hosts, and bare ids.
+- Tests: `tests/integration/softres-mapper.test.ts` (fixture + hand-built
+  dId-absent / placeholder-"0" / bad-timestamp cases) and
+  `tests/unit/softres-url.test.ts`.
+- **Caveat:** the fixture is **n=1** (one reserve, Discord login on). It cannot
+  validate the dId-absent or multi-reserver paths against real data — those are
+  covered by constructed inputs, not recorded ones.
+- **Accept:** ✅ mapper + URL parser tests green.
 
 ### Step 3.3 — Link sheets to a raid night (officer UI)
 - `/admin/raid-nights/[id]`: form with two URL fields — SSC sheet and TK sheet. Server action parses, validates, upserts the two `SoftresSheet` rows (`instance: SSC` / `TK`).
@@ -194,10 +232,25 @@ export interface IPerformanceSource {
 - **Accept:** an officer can paste both links; `softres_sheets` shows exactly two rows for the night.
 
 ### Step 3.4 — Reservation sync + resolution queue
-- `sync-service.ts#syncSoftres(reserveSource, resolver, repos)`: for each sheet, fetch reservations, run each `rawName` through the resolver:
-  - exact/alias → set `characterId`;
-  - suggested → leave `characterId` null, store the suggestion (add nullable `suggestedCharacterId` column to `reservations` via a new migration);
-  - unmatched → `characterId` null.
+- **Schema (done):** `reservations` reshaped via migration
+  `add_softres_reservation_fields` — `itemId Int` → `items Int[]`; added nullable
+  `rawClass`, `discordId`, `reservedAt`, `suggestedCharacterId`, and
+  `ignored Boolean @default(false)`; `@@unique([softresSheetId, rawName])` so
+  re-sync upserts one row per reserved name.
+- `services/sync-softres-service.ts#syncSoftres(reserveSource, store, sheets)`:
+  for each sheet, fetch reservations, resolve each (Step 3.1), then **upsert** by
+  `(sheetId, rawName)`:
+  - `matched` → set `characterId`;
+  - `suggested` → leave `characterId` null, store `suggestedCharacterId`;
+  - `unmatched` → both null.
+- **Idempotency contract (enforced in `reservation-repository.ts`, tested):**
+  - sync **never** writes `ignored` (officer-owned) — a re-sync can't resurface a
+    dismissed row;
+  - sync **never** clears an officer-confirmed `characterId` — on already-linked
+    rows it only refreshes softres metadata;
+  - resolve-once holds via aliases: officer **Link** inserts a
+    `character_alias`, so the next sync re-derives the link by alias with no
+    queue entry.
 - Cron endpoint `/api/cron/sync-softres` (same `CRON_SECRET` guard), syncing sheets of raid nights within the next 7 days.
 - `/admin/unmatched`: table of reservations with `characterId IS NULL`, showing `rawName`, sheet/instance, and the suggestion if present. Actions per row (server actions):
   - **Link** to a character (accept suggestion or pick from search) → sets `characterId` **and** inserts a `character_aliases` row for `rawName` (this is the resolve-once guarantee).
