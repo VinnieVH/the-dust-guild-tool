@@ -1,9 +1,19 @@
 import type { ReactNode } from "react";
 
-type Variant = "fel" | "epic" | "gold" | "neutral";
+type Variant =
+  | "fel"
+  | "sargeras"
+  | "void"
+  | "felfire"
+  | "epic"
+  | "gold"
+  | "neutral";
 
 const VARIANTS: Record<Variant, string> = {
   fel: "border-fel-600 text-fel-200",
+  sargeras: "border-sargeras text-sargeras",
+  void: "border-void-violet text-void-violet",
+  felfire: "border-felfire text-felfire",
   epic: "border-epic text-epic",
   gold: "border-gold text-gold",
   neutral: "border-legion-700 text-fel-100",

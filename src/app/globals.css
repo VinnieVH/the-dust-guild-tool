@@ -1,34 +1,49 @@
 @import "tailwindcss";
 
 /*
- * Fel theme (design doc §7). Dark Legion backgrounds, fel-green accents, gold
- * reserved for achievements, epic purple as a secondary accent.
- * Accessibility (§6): body text uses the lighter fel tints (fel-200/300) for
- * >= 4.5:1 contrast on dark; the saturated fel (fel-500 + glow) is for accents
- * and borders only, never body copy.
+ * Legion / Fel theme. Palette anchored on canonical WoW Burning Legion colors:
+ *   Fel fire neon green  #13FF29 (brightest), #67F100, #7FD81E (muted)
+ *   Sargeras yellow      #EEFF08 (concentrated fel bursts)
+ *   Demonic purple       #711C58 (shocking violet, fel+void contrast)
+ *   Charred obsidian      near-lightless carbonized blacks (backgrounds)
+ *   Felfire orange        embers / higher-tier demon eyes
+ *
+ * Accessibility (design §6): body text uses the lighter fel tints (fel-200/300)
+ * for >= 4.5:1 contrast on the obsidian background; the saturated fel
+ * (fel-500/glow) is for accents, borders and glows only, never body copy.
  */
 @theme {
-  /* Legion dark backgrounds */
-  --color-legion-950: #07090a;
-  --color-legion-900: #0b0f0c;
-  --color-legion-800: #121a15;
-  --color-legion-700: #1b241d;
+  /* Charred obsidian backgrounds — carbonized, near-lightless */
+  --color-legion-950: #050605;
+  --color-legion-900: #0a0c0a;
+  --color-legion-800: #11150f;
+  --color-legion-700: #1a2016;
 
-  /* Fel green ramp */
-  --color-fel-100: #e8ffd6;
-  --color-fel-200: #c6ff95;
-  --color-fel-300: #a6ff5c;
-  --color-fel-400: #86f52e;
-  --color-fel-500: #7fff00;
-  --color-fel-600: #5fcc00;
-  --color-fel-700: #468f00;
-  --color-fel-800: #2f5e00;
-  --color-fel-900: #1c3800;
-  --color-fel-glow: #39ff14;
+  /* Fel green ramp — anchored on #13FF29 / #67F100 / #7FD81E */
+  --color-fel-100: #ecffe2;
+  --color-fel-200: #c7ff9f;
+  --color-fel-300: #95f95a;
+  --color-fel-400: #67f100;
+  --color-fel-500: #13ff29;
+  --color-fel-600: #7fd81e;
+  --color-fel-700: #4f9a14;
+  --color-fel-800: #2f5e0c;
+  --color-fel-900: #18340a;
+  --color-fel-glow: #13ff29;
 
-  /* Accent + quality colors */
-  --color-epic: #a335ee;
-  --color-gold: #ffb100;
+  /* Sargeras yellow — concentrated fel bursts (highlights, CTAs) */
+  --color-sargeras: #eeff08;
+
+  /* Shadow & void accents */
+  --color-void-violet: #711c58; /* shocking violet (demonic purple) */
+  --color-void-indigo: #1e1130; /* Twisting Nether / Legion architecture */
+
+  /* Felfire orange — embers, braziers, demon eyes */
+  --color-felfire: #ff6a13;
+
+  /* Item-quality colors */
+  --color-epic: #a335ee; /* WoW epic purple (kept for item borders) */
+  --color-gold: #ffce1f; /* achievements — warm fel-gold */
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
