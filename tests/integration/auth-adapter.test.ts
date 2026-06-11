@@ -59,12 +59,21 @@ describe("reconciling adapter createUser", () => {
     });
 
     const result = await adapter.createUser!(
-      profileUser({ discordId, discordName: "RealName" }),
+      profileUser({
+        discordId,
+        discordName: "RealName",
+        image: "https://cdn.discordapp.com/avatars/x/y.png",
+      }),
     );
     expect(result.id).toBe(stub.id); // same row, not a new one
 
     const count = await db.user.count({ where: { discordId } });
     expect(count).toBe(1);
+
+    // Backfills avatar/name the sync couldn't know.
+    const row = await db.user.findUnique({ where: { discordId } });
+    expect(row?.image).toBe("https://cdn.discordapp.com/avatars/x/y.png");
+    expect(row?.discordName).toBe("RealName");
   });
 
   // The clobber trap: a seeded OFFICER signing in for the first time must keep

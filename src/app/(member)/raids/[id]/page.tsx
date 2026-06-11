@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ClassName } from "@/components/ui/class-name";
+import { PageContainer } from "@/components/ui/page-container";
 import { MainRole } from "@/lib/domain/enums";
 import { SignupStatus } from "@/lib/domain/external";
 import {
@@ -73,8 +74,8 @@ export default async function RaidNightPage({
   );
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <header>
+    <PageContainer>
+      <header className="mb-6">
         <h1 className="text-xl font-semibold text-fel-300">{night.title}</h1>
         <p className="text-fel-200">{dateFmt.format(night.date)}</p>
       </header>
@@ -103,7 +104,7 @@ export default async function RaidNightPage({
       </div>
 
       {notAttending.length > 0 && (
-        <section>
+        <section className="mt-6">
           <h2 className="mb-2 font-semibold text-fel-300">Not attending</h2>
           <ul className="flex flex-col gap-1">
             {notAttending.map((m, i) => (
@@ -112,6 +113,6 @@ export default async function RaidNightPage({
           </ul>
         </section>
       )}
-    </div>
+    </PageContainer>
   );
 }

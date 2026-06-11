@@ -8,19 +8,32 @@ export async function SiteHeader() {
   const session = await auth();
   const user = session?.user;
 
+  const navLink =
+    "text-fel-200 transition-colors hover:text-fel-400";
+  const button =
+    "rounded border border-fel-800 px-3 py-1 text-fel-200 transition-colors hover:border-fel-500 hover:text-fel-400 hover:shadow-[0_0_10px_-2px_var(--color-fel-glow)]";
+
   return (
-    <header className="flex items-center justify-between border-b border-neutral-800 px-6 py-3">
+    <header className="flex items-center justify-between border-b border-legion-700 px-6 py-3">
       <nav className="flex items-center gap-4 text-sm">
-        <Link href="/" className="font-semibold">
+        <Link href="/" className="font-semibold text-fel-300 hover:text-fel-400">
           The Dust
         </Link>
         {user && (
           <>
-            <Link href="/raids">Raids</Link>
-            <Link href="/profile">Profile</Link>
-            <Link href="/leaderboard">Leaderboard</Link>
+            <Link href="/raids" className={navLink}>
+              Raids
+            </Link>
+            <Link href="/profile" className={navLink}>
+              Profile
+            </Link>
+            <Link href="/leaderboard" className={navLink}>
+              Leaderboard
+            </Link>
             {user.role === Role.OFFICER && (
-              <Link href="/admin/raid-nights">Admin</Link>
+              <Link href="/admin/raid-nights" className={navLink}>
+                Admin
+              </Link>
             )}
           </>
         )}
@@ -29,14 +42,26 @@ export async function SiteHeader() {
       <div className="flex items-center gap-3 text-sm">
         {user ? (
           <>
-            <span className="text-neutral-300">{user.discordName ?? user.name}</span>
+            <span className="flex items-center gap-2 text-fel-100">
+              {user.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.image}
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="rounded-full border border-fel-800"
+                />
+              )}
+              {user.discordName ?? user.name}
+            </span>
             <form
               action={async () => {
                 "use server";
                 await signOut({ redirectTo: "/" });
               }}
             >
-              <button type="submit" className="rounded border border-neutral-700 px-3 py-1">
+              <button type="submit" className={button}>
                 Sign out
               </button>
             </form>
@@ -48,7 +73,7 @@ export async function SiteHeader() {
               await signIn("discord", { redirectTo: "/" });
             }}
           >
-            <button type="submit" className="rounded border border-neutral-700 px-3 py-1">
+            <button type="submit" className={button}>
               Sign in with Discord
             </button>
           </form>

@@ -27,7 +27,15 @@ export function createReconcilingAdapter(prisma: typeof Db): Adapter {
       const data = user as CreateUserInput;
       return prisma.user.upsert({
         where: { discordId: data.discordId },
-        update: {}, // row exists (stub or officer) → return as-is, preserve role
+        // Row exists (sync stub or seeded officer): backfill the display name,
+        // avatar and email the sync couldn't know — but NEVER role, or a
+        // seeded OFFICER would be downgraded to MEMBER on first sign-in.
+        update: {
+          discordName: data.discordName,
+          name: data.name,
+          image: data.image,
+          email: data.email,
+        },
         create: {
           discordId: data.discordId,
           discordName: data.discordName,

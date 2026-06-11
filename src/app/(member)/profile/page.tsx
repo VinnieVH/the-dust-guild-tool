@@ -1,4 +1,5 @@
-import { classColor } from "@/lib/domain/wow";
+import { ClassName } from "@/components/ui/class-name";
+import { PageContainer } from "@/components/ui/page-container";
 import { characterRepository } from "@/lib/repositories/character-repository";
 import { auth } from "@/lib/auth";
 import { ClaimForm } from "./claim-form";
@@ -11,21 +12,17 @@ export default async function ProfilePage() {
   const characters = await characterRepository.listByUser(session.user.id);
 
   return (
-    <div className="flex flex-col gap-8 p-6">
-      <section>
-        <h1 className="text-xl font-semibold">My characters</h1>
+    <PageContainer>
+      <section className="mb-8">
+        <h1 className="text-xl font-semibold text-fel-300">My characters</h1>
         {characters.length === 0 ? (
-          <p className="text-neutral-400">
-            No characters claimed yet. Claim one below.
-          </p>
+          <p className="mt-2 text-fel-200">No characters claimed yet. Claim one below.</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-1">
             {characters.map((c) => (
               <li key={c.id}>
-                <span style={{ color: classColor(c.class) }} className="font-medium">
-                  {c.name}
-                </span>{" "}
-                <span className="text-neutral-400">
+                <ClassName name={c.name} wowClass={c.class} />{" "}
+                <span className="text-fel-200">
                   — {c.spec} {c.class} ({c.mainRole})
                 </span>
               </li>
@@ -35,9 +32,9 @@ export default async function ProfilePage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Claim a character</h2>
+        <h2 className="mb-3 text-lg font-semibold text-fel-300">Claim a character</h2>
         <ClaimForm />
       </section>
-    </div>
+    </PageContainer>
   );
 }
