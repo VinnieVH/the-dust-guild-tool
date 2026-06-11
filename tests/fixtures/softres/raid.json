@@ -1,0 +1,45 @@
+{
+    "_id": "6a2b0f7c28f6f409ddf8cd41",
+    "raidId": "pfsymj",
+    "edition": "tbc",
+    "instance": null,
+    "discord": true,
+    "discordId": null,
+    "discordInvite": null,
+    "reserved": [
+        {
+            "name": "Skreamo",
+            "class": "Warrior",
+            "spec": 92,
+            "items": [
+                28453,
+                28505
+            ],
+            "note": "",
+            "created": "2026-06-11T19:42:50.162Z",
+            "updated": "2026-06-11T19:42:50.162Z",
+            "dId": "127540852686848000",
+            "dU": "skreamo#0"
+        }
+    ],
+    "modifications": 0,
+    "faction": "Horde",
+    "amount": 2,
+    "lock": false,
+    "note": "",
+    "raidDate": null,
+    "lockRaidDate": false,
+    "hideReserves": false,
+    "allowDuplicate": true,
+    "itemLimit": 0,
+    "plusModifier": 1,
+    "plusType": 0,
+    "restrictByClass": true,
+    "characterNotes": true,
+    "itemNotes": [],
+    "date": "2026-06-11T19:41:48.549Z",
+    "updated": "2026-06-11T19:42:50.162Z",
+    "instances": [
+        "kara"
+    ]
+}

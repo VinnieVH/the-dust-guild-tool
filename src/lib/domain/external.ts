@@ -39,7 +39,15 @@ export interface ExternalSignup {
 export interface ExternalReservation {
   /** Raw character name as typed on softres.it (typo-prone). */
   rawName: string;
-  itemId: number;
+  /** Class the reserver picked on softres, if any. */
+  rawClass: string | null;
+  /** Discord id of the reserver (softres `dId`). The strong link — softres
+   *  requires Discord login. Null defensively if a sheet omits it. */
+  discordId: string | null;
+  /** Item ids this name reserved on the sheet (softres `items`). */
+  items: number[];
+  /** When the reservation was made (softres `updated`/`created`). */
+  reservedAt: Date | null;
 }
 
 export interface ExternalPerformance {
