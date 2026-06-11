@@ -29,7 +29,13 @@ class FakeStore implements RaidSyncStore {
   users = new Map<string, string>(); // discordId -> userId
   signups = new Map<
     string,
-    { status: string; specSignedAs: string; role: MainRole | null }
+    {
+      status: string;
+      specSignedAs: string;
+      role: MainRole | null;
+      characterName: string | null;
+      class: string | null;
+    }
   >(); // `${nightId}:${userId}`
   private seq = 0;
 
@@ -69,24 +75,31 @@ class FakeStore implements RaidSyncStore {
     status,
     specSignedAs,
     role,
+    characterName,
+    class: className,
   }: {
     raidNightId: string;
     userId: string;
     status: string;
     specSignedAs: string;
     role: MainRole | null;
+    characterName: string | null;
+    class: string | null;
   }) {
     const key = `${raidNightId}:${userId}`;
     const existing = this.signups.get(key);
+    const next = { status, specSignedAs, role, characterName, class: className };
     if (!existing) {
-      this.signups.set(key, { status, specSignedAs, role });
+      this.signups.set(key, next);
       return { created: true, updated: false };
     }
     const changed =
       existing.status !== status ||
       existing.specSignedAs !== specSignedAs ||
-      existing.role !== role;
-    if (changed) this.signups.set(key, { status, specSignedAs, role });
+      existing.role !== role ||
+      existing.characterName !== characterName ||
+      existing.class !== className;
+    if (changed) this.signups.set(key, next);
     return { created: false, updated: changed };
   }
 }

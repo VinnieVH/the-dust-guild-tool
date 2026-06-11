@@ -1,5 +1,9 @@
 import type { CharacterRecord, ClaimInput } from "@/lib/domain/character";
 import type { MainRole } from "@/lib/domain/enums";
+import type {
+  AutoClaimStore,
+  ClaimableSignup,
+} from "@/lib/services/auto-claim";
 import type { CharacterClaimStore } from "@/lib/services/character-claim";
 import { db } from "@/lib/db";
 
@@ -26,11 +30,15 @@ function toRecord(row: CharacterRow): CharacterRecord {
 
 // Thin Prisma wrapper for the Character aggregate. The only place character
 // persistence happens; everything above uses CharacterRecord.
-export const characterRepository: CharacterClaimStore & {
-  listByUser(userId: string): Promise<CharacterRecord[]>;
-  transfer(characterId: string, toUserId: string | null): Promise<CharacterRecord>;
-  addAlias(characterId: string, alias: string): Promise<void>;
-} = {
+export const characterRepository: CharacterClaimStore &
+  AutoClaimStore & {
+    listByUser(userId: string): Promise<CharacterRecord[]>;
+    transfer(
+      characterId: string,
+      toUserId: string | null,
+    ): Promise<CharacterRecord>;
+    addAlias(characterId: string, alias: string): Promise<void>;
+  } = {
   async findByNameOrAlias(name) {
     const direct = await db.character.findUnique({ where: { name } });
     if (direct) return toRecord(direct);
@@ -81,5 +89,31 @@ export const characterRepository: CharacterClaimStore & {
 
   async addAlias(characterId, alias) {
     await db.characterAlias.create({ data: { characterId, alias } });
+  },
+
+  async listClaimableSignups(discordId): Promise<ClaimableSignup[]> {
+    // Only signups that name a real character, class, and role can become a
+    // Character (mainRole is NOT NULL). Role-only "Tank" signups (class null)
+    // and absent/bench rows (role null) are excluded here.
+    const rows = await db.signup.findMany({
+      where: {
+        user: { discordId },
+        characterName: { not: null },
+        class: { not: null },
+        role: { not: null },
+      },
+      select: {
+        characterName: true,
+        class: true,
+        specSignedAs: true,
+        role: true,
+      },
+    });
+    return rows.map((r) => ({
+      characterName: r.characterName as string,
+      class: r.class as string,
+      specSignedAs: r.specSignedAs,
+      role: r.role as MainRole,
+    }));
   },
 };

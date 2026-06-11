@@ -96,6 +96,12 @@ model Signup {
   // Role the player signed up to fill this night, from Raid-Helper's roleName.
   // Nullable: absent/bench signups omit a role.
   role         MainRole?
+  // The WoW character + class the player signed up as, straight from Raid-Helper.
+  // Persisted (not derived) because discordName != character name (alts) and the
+  // class can't be recovered from spec. Drives auto-claim on login. Nullable:
+  // role-only signups ("Tank") carry no class.
+  characterName String?
+  class         String?
   raidNight    RaidNight @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

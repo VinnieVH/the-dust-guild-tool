@@ -21,6 +21,8 @@ export interface RaidSyncStore {
     status: string;
     specSignedAs: string;
     role: MainRole | null;
+    characterName: string | null;
+    class: string | null;
   }): Promise<{ created: boolean; updated: boolean }>;
 }
 
@@ -56,25 +58,49 @@ export const raidNightRepository: RaidSyncStore = {
     return user.id;
   },
 
-  async upsertSignup({ raidNightId, userId, status, specSignedAs, role }) {
+  async upsertSignup({
+    raidNightId,
+    userId,
+    status,
+    specSignedAs,
+    role,
+    characterName,
+    class: className,
+  }) {
     const existing = await db.signup.findUnique({
       where: { raidNightId_userId: { raidNightId, userId } },
-      select: { status: true, specSignedAs: true, role: true },
+      select: {
+        status: true,
+        specSignedAs: true,
+        role: true,
+        characterName: true,
+        class: true,
+      },
     });
     if (!existing) {
       await db.signup.create({
-        data: { raidNightId, userId, status, specSignedAs, role },
+        data: {
+          raidNightId,
+          userId,
+          status,
+          specSignedAs,
+          role,
+          characterName,
+          class: className,
+        },
       });
       return { created: true, updated: false };
     }
     const changed =
       existing.status !== status ||
       existing.specSignedAs !== specSignedAs ||
-      existing.role !== role;
+      existing.role !== role ||
+      existing.characterName !== characterName ||
+      existing.class !== className;
     if (changed) {
       await db.signup.update({
         where: { raidNightId_userId: { raidNightId, userId } },
-        data: { status, specSignedAs, role },
+        data: { status, specSignedAs, role, characterName, class: className },
       });
     }
     return { created: false, updated: changed };

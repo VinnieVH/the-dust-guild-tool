@@ -46,6 +46,8 @@ export async function syncRaidHelper(
         status: signup.status,
         specSignedAs: signup.spec ?? "",
         role: signup.role,
+        characterName: signup.name,
+        class: signup.class,
       });
       result.signups += 1;
       if (outcome.updated) result.updated += 1;
