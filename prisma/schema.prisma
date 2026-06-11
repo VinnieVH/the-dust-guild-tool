@@ -22,6 +22,9 @@ model User {
   discordName   String
   role          Role        @default(MEMBER)
   // Auth.js adapter fields (optional — populated by the OAuth profile).
+  // `name` is required by Auth.js's AdapterUser; `discordName` is our NOT-NULL
+  // domain field that app logic reads. They usually hold the same value.
+  name          String?
   email         String?     @unique
   emailVerified DateTime?
   image         String?
