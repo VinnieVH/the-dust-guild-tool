@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { listRaidNightsForAdmin } from "@/lib/repositories/admin-queries";
+import { SyncEventsButton } from "./sync-events-button";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
   weekday: "short",
@@ -14,13 +15,16 @@ export default async function AdminRaidNightsPage() {
 
   return (
     <PageContainer>
-      <header className="mb-6">
-        <h1 className="text-xl font-semibold text-fel-300">
-          Admin · Raid Nights
-        </h1>
-        <p className="text-fel-200">
-          Link softres sheets to a raid night. Officer-only.
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-fel-300">
+            Admin · Raid Nights
+          </h1>
+          <p className="text-fel-200">
+            Link softres sheets to a raid night. Officer-only.
+          </p>
+        </div>
+        <SyncEventsButton />
       </header>
 
       {nights.length === 0 ? (

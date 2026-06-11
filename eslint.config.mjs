@@ -15,6 +15,16 @@ const eslintConfig = defineConfig([
     // Generated Prisma client (gitignored, ships its own eslint-disable).
     "src/generated/**",
   ]),
+  {
+    // `_`-prefixed args are intentionally unused — e.g. a useActionState action
+    // that ignores its prior-state arg. Honor the existing naming convention.
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
