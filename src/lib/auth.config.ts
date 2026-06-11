@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import Discord from "next-auth/providers/discord";
+import { discordAvatarUrl } from "@/lib/discord-avatar";
 import { Role } from "@/lib/domain/enums";
 import { env } from "@/lib/env.server";
 
@@ -30,9 +31,7 @@ export const authConfig = {
           discordName: profile.global_name ?? profile.username,
           name: profile.global_name ?? profile.username,
           email: profile.email ?? null,
-          image: profile.avatar
-            ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
-            : null,
+          image: discordAvatarUrl(profile),
           role: Role.MEMBER,
         };
       },
@@ -42,11 +41,25 @@ export const authConfig = {
     // Persist identity + role onto the JWT. On first sign-in `user` is the
     // freshly-created row; afterwards we read the role back from the DB-synced
     // token. `db` is injected from auth.ts to keep this file adapter-free.
-    async jwt({ token, user }) {
+    async jwt({ token, user, profile }) {
       if (user) {
         token.role = user.role ?? Role.MEMBER;
         token.discordId = user.discordId ?? null;
         token.discordName = user.discordName ?? null;
+      }
+      // `profile` is present on every OAuth sign-in (unlike the createUser path,
+      // which only runs once). Refresh the avatar here so it shows for returning
+      // users whose DB row predates avatar support. `picture` is the standard
+      // JWT claim the session reads as `user.image`.
+      if (profile?.id) {
+        token.picture = discordAvatarUrl({
+          id: profile.id,
+          avatar: typeof profile.avatar === "string" ? profile.avatar : null,
+          discriminator:
+            typeof profile.discriminator === "string"
+              ? profile.discriminator
+              : null,
+        });
       }
       return token;
     },
@@ -56,6 +69,7 @@ export const authConfig = {
         session.user.role = token.role ?? Role.MEMBER;
         session.user.discordId = token.discordId ?? null;
         session.user.discordName = token.discordName ?? null;
+        if (token.picture) session.user.image = token.picture;
       }
       return session;
     },
