@@ -1,17 +1,36 @@
-import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
+import { defineConfig } from "vitest/config";
+
+const alias = {
+  "@": fileURLToPath(new URL("./src", import.meta.url)),
+};
 
 export default defineConfig({
+  resolve: { alias },
   test: {
-    // Default to node; component tests opt into jsdom via a per-file
-    // `// @vitest-environment jsdom` pragma.
-    environment: "node",
     globals: true,
-    include: ["tests/**/*.{test,spec}.{ts,tsx}", "src/**/*.{test,spec}.{ts,tsx}"],
-  },
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
+    projects: [
+      {
+        // Pure unit tests: no DB, no external IO, no env required.
+        resolve: { alias },
+        test: {
+          name: "unit",
+          globals: true,
+          environment: "node",
+          include: ["tests/unit/**/*.{test,spec}.{ts,tsx}", "src/**/*.{test,spec}.{ts,tsx}"],
+        },
+      },
+      {
+        // Integration tests: hit the docker-compose Postgres; load .env first.
+        resolve: { alias },
+        test: {
+          name: "integration",
+          globals: true,
+          environment: "node",
+          include: ["tests/integration/**/*.{test,spec}.{ts,tsx}"],
+          setupFiles: ["./tests/setup.integration.ts"],
+        },
+      },
+    ],
   },
 });

@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:16
+    container_name: guildtool-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: guildtool
+      POSTGRES_PASSWORD: guildtool
+      POSTGRES_DB: guildtool
+    ports:
+      # Host 5433 -> container 5432: avoids a native Postgres already on 5432.
+      - "5433:5432"
+    volumes:
+      - guildtool-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guildtool -d guildtool"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  guildtool-pgdata:

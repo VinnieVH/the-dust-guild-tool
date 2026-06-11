@@ -1,0 +1,230 @@
+// Guild Management Tool — Prisma schema
+// Tables are plural snake_case via @@map(); models stay PascalCase singular.
+// Character.name is the primary cross-integration linking key (@unique).
+// See docs/plans/2026-06-11-guild-tool-design.md §4 for the source of truth.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Domain models
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String      @id @default(cuid())
+  discordId     String      @unique
+  discordName   String
+  role          Role        @default(MEMBER)
+  // Auth.js adapter fields (optional — populated by the OAuth profile).
+  email         String?     @unique
+  emailVerified DateTime?
+  image         String?
+  characters    Character[]
+  signups       Signup[]
+  accounts      Account[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Character {
+  id           String              @id @default(cuid())
+  userId       String?
+  name         String              @unique // primary cross-integration linking key
+  class        String
+  spec         String
+  mainRole     MainRole
+  user         User?               @relation(fields: [userId], references: [id])
+  aliases      CharacterAlias[]
+  reservations Reservation[]
+  performances PlayerPerformance[]
+  awards       AchievementAward[]
+
+  @@map("characters")
+}
+
+model CharacterAlias {
+  id          String    @id @default(cuid())
+  characterId String
+  alias       String    @unique // officer-confirmed name variants
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@map("character_aliases")
+}
+
+model RaidNight {
+  id                String             @id @default(cuid())
+  date              DateTime
+  raidHelperEventId String             @unique
+  title             String
+  sheets            SoftresSheet[]
+  signups           Signup[]
+  reports           WclReport[]
+  awards            AchievementAward[]
+
+  @@map("raid_nights")
+}
+
+model SoftresSheet {
+  id           String        @id @default(cuid())
+  raidNightId  String
+  instance     Instance
+  softresId    String
+  token        String?
+  raidNight    RaidNight     @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([raidNightId, instance]) // one sheet per instance per night
+  @@map("softres_sheets")
+}
+
+model Signup {
+  id           String    @id @default(cuid())
+  raidNightId  String
+  userId       String
+  status       String
+  specSignedAs String
+  raidNight    RaidNight @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([raidNightId, userId])
+  @@map("signups")
+}
+
+model Reservation {
+  id             String       @id @default(cuid())
+  softresSheetId String
+  characterId    String? // nullable -> unmatched entries form the officer queue
+  rawName        String // always kept, even when matched
+  itemId         Int
+  softresSheet   SoftresSheet @relation(fields: [softresSheetId], references: [id], onDelete: Cascade)
+  character      Character?   @relation(fields: [characterId], references: [id])
+
+  @@map("reservations")
+}
+
+model WclReport {
+  id           String              @id @default(cuid())
+  raidNightId  String // MANY reports per raid night
+  reportCode   String              @unique
+  instance     Instance
+  raidNight    RaidNight           @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
+  performances PlayerPerformance[]
+
+  @@map("wcl_reports")
+}
+
+model PlayerPerformance {
+  id            String    @id @default(cuid())
+  wclReportId   String
+  characterId   String
+  role          MainRole
+  parseAvg      Float
+  dpsOrHps      Float
+  deaths        Int
+  interrupts    Int
+  dispels       Int
+  fightsPresent Int
+  wclReport     WclReport @relation(fields: [wclReportId], references: [id], onDelete: Cascade)
+  character     Character @relation(fields: [characterId], references: [id])
+
+  @@map("player_performances")
+}
+
+model Achievement {
+  id          String             @id @default(cuid())
+  key         String             @unique
+  name        String
+  description String
+  icon        String
+  category    String
+  awards      AchievementAward[]
+
+  @@map("achievements")
+}
+
+model AchievementAward {
+  id            String      @id @default(cuid())
+  achievementId String
+  characterId   String
+  raidNightId   String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  character     Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  raidNight     RaidNight   @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
+
+  @@map("achievement_awards")
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (NextAuth v5) adapter models
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  MEMBER
+  OFFICER
+
+  @@map("roles")
+}
+
+enum MainRole {
+  TANK
+  HEALER
+  DPS
+
+  @@map("main_roles")
+}
+
+enum Instance {
+  SSC
+  TK
+
+  @@map("instances")
+}
