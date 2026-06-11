@@ -94,29 +94,6 @@ export default async function RaidNightPage({
         <p className="text-fel-200">{dateFmt.format(night.date)}</p>
       </header>
 
-      {overview.linkedInstances.length > 0 && (
-        <Card className="mb-6">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-fel-300">Soft-res completion</h2>
-            <CopyReminderButton text={reminder} />
-          </div>
-          <div className="mb-4">
-            <ProgressBar
-              value={overview.completed}
-              max={overview.total}
-              label="SR completion"
-            />
-          </div>
-          <SrMatrix overview={overview} />
-          {poke.length > 0 && (
-            <p className="mt-3 text-xs text-fel-200">
-              {poke.length} member{poke.length === 1 ? "" : "s"} still missing a
-              reservation.
-            </p>
-          )}
-        </Card>
-      )}
-
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {ROLE_COLUMNS.map(({ role, label }) => {
           const members = attending.filter((m) => m.role === role);
@@ -149,6 +126,29 @@ export default async function RaidNightPage({
             ))}
           </ul>
         </section>
+      )}
+
+      {overview.linkedInstances.length > 0 && (
+        <Card className="mt-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-fel-300">Soft-res completion</h2>
+            <CopyReminderButton text={reminder} />
+          </div>
+          <div className="mb-4">
+            <ProgressBar
+              value={overview.completed}
+              max={overview.total}
+              label="SR completion"
+            />
+          </div>
+          <SrMatrix overview={overview} />
+          {poke.length > 0 && (
+            <p className="mt-3 text-xs text-fel-200">
+              {poke.length} member{poke.length === 1 ? "" : "s"} still missing a
+              reservation.
+            </p>
+          )}
+        </Card>
       )}
     </PageContainer>
   );
