@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { MainRole } from "@/lib/domain/enums";
 import {
   type ExternalRaidEvent,
   type ExternalSignup,
@@ -26,7 +27,10 @@ class FakeEventSource implements IEventSource {
 class FakeStore implements RaidSyncStore {
   nights = new Map<string, { id: string; title: string; date: Date }>(); // by rhEventId
   users = new Map<string, string>(); // discordId -> userId
-  signups = new Map<string, { status: string; specSignedAs: string }>(); // `${nightId}:${userId}`
+  signups = new Map<
+    string,
+    { status: string; specSignedAs: string; role: MainRole | null }
+  >(); // `${nightId}:${userId}`
   private seq = 0;
 
   async upsertRaidNight({
@@ -64,21 +68,25 @@ class FakeStore implements RaidSyncStore {
     userId,
     status,
     specSignedAs,
+    role,
   }: {
     raidNightId: string;
     userId: string;
     status: string;
     specSignedAs: string;
+    role: MainRole | null;
   }) {
     const key = `${raidNightId}:${userId}`;
     const existing = this.signups.get(key);
     if (!existing) {
-      this.signups.set(key, { status, specSignedAs });
+      this.signups.set(key, { status, specSignedAs, role });
       return { created: true, updated: false };
     }
     const changed =
-      existing.status !== status || existing.specSignedAs !== specSignedAs;
-    if (changed) this.signups.set(key, { status, specSignedAs });
+      existing.status !== status ||
+      existing.specSignedAs !== specSignedAs ||
+      existing.role !== role;
+    if (changed) this.signups.set(key, { status, specSignedAs, role });
     return { created: false, updated: changed };
   }
 }
@@ -93,6 +101,7 @@ const signup = (over: Partial<ExternalSignup> = {}): ExternalSignup => ({
   name: "Skreamo",
   class: "Warrior",
   spec: "Arms",
+  role: MainRole.DPS,
   status: SignupStatus.CONFIRMED,
   ...over,
 });

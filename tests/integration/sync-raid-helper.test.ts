@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { MainRole } from "@/lib/domain/enums";
 import {
   type ExternalRaidEvent,
   type ExternalSignup,
@@ -35,6 +36,7 @@ const signup: ExternalSignup = {
   name: "ITestSkreamo",
   class: "Warrior",
   spec: "Arms",
+  role: MainRole.DPS,
   status: SignupStatus.CONFIRMED,
 };
 

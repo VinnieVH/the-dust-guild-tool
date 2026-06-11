@@ -1,4 +1,5 @@
 import type { ExternalSignup } from "@/lib/domain/external";
+import type { MainRole } from "@/lib/domain/enums";
 import { db } from "@/lib/db";
 
 // Port the sync service depends on (keeps the service Prisma-free / testable).
@@ -19,6 +20,7 @@ export interface RaidSyncStore {
     userId: string;
     status: string;
     specSignedAs: string;
+    role: MainRole | null;
   }): Promise<{ created: boolean; updated: boolean }>;
 }
 
@@ -54,23 +56,25 @@ export const raidNightRepository: RaidSyncStore = {
     return user.id;
   },
 
-  async upsertSignup({ raidNightId, userId, status, specSignedAs }) {
+  async upsertSignup({ raidNightId, userId, status, specSignedAs, role }) {
     const existing = await db.signup.findUnique({
       where: { raidNightId_userId: { raidNightId, userId } },
-      select: { status: true, specSignedAs: true },
+      select: { status: true, specSignedAs: true, role: true },
     });
     if (!existing) {
       await db.signup.create({
-        data: { raidNightId, userId, status, specSignedAs },
+        data: { raidNightId, userId, status, specSignedAs, role },
       });
       return { created: true, updated: false };
     }
     const changed =
-      existing.status !== status || existing.specSignedAs !== specSignedAs;
+      existing.status !== status ||
+      existing.specSignedAs !== specSignedAs ||
+      existing.role !== role;
     if (changed) {
       await db.signup.update({
         where: { raidNightId_userId: { raidNightId, userId } },
-        data: { status, specSignedAs },
+        data: { status, specSignedAs, role },
       });
     }
     return { created: false, updated: changed };

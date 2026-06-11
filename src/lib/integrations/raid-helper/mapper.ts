@@ -1,3 +1,4 @@
+import { MainRole } from "@/lib/domain/enums";
 import {
   type ExternalRaidEvent,
   type ExternalSignup,
@@ -49,6 +50,23 @@ function cleanSpec(spec: string | undefined): string | null {
   return spec.replace(/\d+$/, "");
 }
 
+// Raid-Helper roleName -> our MainRole. Tanks/Healers/Melee/Ranged are the
+// values in the template's `roles` array (verified against the fixture).
+const ROLE_BY_NAME: Record<string, MainRole> = {
+  Tanks: MainRole.TANK,
+  Healers: MainRole.HEALER,
+  Melee: MainRole.DPS,
+  Ranged: MainRole.DPS,
+};
+
+function mapRole(roleName: string | undefined): MainRole | null {
+  if (!roleName) return null; // absent/bench signups omit a role
+  const role = ROLE_BY_NAME[roleName];
+  if (role) return role;
+  console.warn(`[raid-helper] unknown roleName "${roleName}" -> null`);
+  return null;
+}
+
 export function mapSignup(dto: RhSignupDto): ExternalSignup {
   return {
     discordId: dto.userId,
@@ -57,6 +75,7 @@ export function mapSignup(dto: RhSignupDto): ExternalSignup {
     // etc. are not classes, so leave class null (matching is by name anyway).
     class: isValidClass(dto.className) ? dto.className : null,
     spec: cleanSpec(dto.specName),
+    role: mapRole(dto.roleName),
     status: mapStatus(dto.className),
   };
 }

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { MainRole } from "@/lib/domain/enums";
 import { SignupStatus } from "@/lib/domain/external";
 import type {
   RhEventDetailDto,
@@ -51,6 +52,22 @@ describe("raid-helper mapper (recorded fixtures)", () => {
     expect(tank?.status).toBe(SignupStatus.CONFIRMED);
     expect(tank?.class).toBeNull(); // "Tank" is a role, not a class
     expect(tank?.spec).toBe("Protection");
+  });
+
+  it("maps Raid-Helper roleName to MainRole", () => {
+    const detail = load<RhEventDetailDto>("event.json");
+    const signups = mapSignups(detail);
+    expect(signups.find((s) => s.name === "Guntrip")?.role).toBe(MainRole.TANK); // Tanks
+    expect(signups.find((s) => s.name === "Skreamo")?.role).toBe(MainRole.DPS); // Melee
+    expect(signups.find((s) => s.name === "Sajkol")?.role).toBe(MainRole.DPS); // Ranged
+    // Every CONFIRMED signup in this fixture has a role.
+    expect(signups.filter((s) => s.role === null)).toHaveLength(0);
+  });
+
+  it("leaves role null for an absence (no roleName)", () => {
+    const detail = load<RhEventDetailDto>("event-absence.json");
+    const skreamo = mapSignups(detail).find((s) => s.name === "Skreamo");
+    expect(skreamo?.role).toBeNull();
   });
 
   it("strips Raid-Helper's dual-spec digit suffix for display", () => {

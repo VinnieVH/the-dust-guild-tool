@@ -93,6 +93,9 @@ model Signup {
   userId       String
   status       String
   specSignedAs String
+  // Role the player signed up to fill this night, from Raid-Helper's roleName.
+  // Nullable: absent/bench signups omit a role.
+  role         MainRole?
   raidNight    RaidNight @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

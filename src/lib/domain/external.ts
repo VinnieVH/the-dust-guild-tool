@@ -30,6 +30,9 @@ export interface ExternalSignup {
   class: string | null;
   /** Spec the player signed as, if provided. */
   spec: string | null;
+  /** Role the player signed up to fill (from Raid-Helper roleName). Null for
+   *  absent/bench signups that omit a role. */
+  role: MainRole | null;
   status: SignupStatus;
 }
 
