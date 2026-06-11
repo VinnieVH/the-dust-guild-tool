@@ -3,12 +3,21 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ClassName } from "@/components/ui/class-name";
 import { PageContainer } from "@/components/ui/page-container";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { MainRole } from "@/lib/domain/enums";
 import { SignupStatus } from "@/lib/domain/external";
 import {
   type RosterEntry,
   getRaidNightDetail,
 } from "@/lib/repositories/raid-queries";
+import { getOverviewData } from "@/lib/repositories/reserve-overview-queries";
+import {
+  buildOverview,
+  buildPokeList,
+  buildReminderText,
+} from "@/lib/services/reserve-overview-service";
+import { CopyReminderButton } from "./copy-reminder-button";
+import { SrMatrix } from "./sr-matrix";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
@@ -73,12 +82,40 @@ export default async function RaidNightPage({
     (m) => m.status !== SignupStatus.CONFIRMED,
   );
 
+  // Soft-res overview: only render when at least one sheet is linked.
+  const overview = buildOverview(await getOverviewData(id));
+  const poke = buildPokeList(overview);
+  const reminder = buildReminderText(poke);
+
   return (
     <PageContainer>
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-fel-300">{night.title}</h1>
         <p className="text-fel-200">{dateFmt.format(night.date)}</p>
       </header>
+
+      {overview.linkedInstances.length > 0 && (
+        <Card className="mb-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-fel-300">Soft-res completion</h2>
+            <CopyReminderButton text={reminder} />
+          </div>
+          <div className="mb-4">
+            <ProgressBar
+              value={overview.completed}
+              max={overview.total}
+              label="SR completion"
+            />
+          </div>
+          <SrMatrix overview={overview} />
+          {poke.length > 0 && (
+            <p className="mt-3 text-xs text-fel-200">
+              {poke.length} member{poke.length === 1 ? "" : "s"} still missing a
+              reservation.
+            </p>
+          )}
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {ROLE_COLUMNS.map(({ role, label }) => {
