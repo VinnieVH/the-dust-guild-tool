@@ -113,11 +113,31 @@ model Reservation {
   id             String       @id @default(cuid())
   softresSheetId String
   characterId    String? // nullable -> unmatched entries form the officer queue
+  // Levenshtein/diacritic suggestion left for an officer to confirm. Null when
+  // matched (dId/exact/alias) or genuinely unmatched. See implementation-plan §3.4.
+  suggestedCharacterId String?
   rawName        String // always kept, even when matched
-  itemId         Int
+  // class straight from softres (display + create-on-claim). softres sends a
+  // class string per reservation; kept faithfully.
+  rawClass       String?
+  // Discord id of the reserver (softres `dId`). The strong link: softres requires
+  // Discord login, so this resolves to a user the same way Raid-Helper signups do.
+  // Nullable defensively — a raid configured without Discord login would omit it.
+  discordId      String?
+  // softres item ids reserved on this sheet (the `items` array). Phase 3 only
+  // needs "reserved here?", but we keep the ids faithfully for later.
+  items          Int[]
+  // softres reservation timestamp — needed by the sr-speedrunner achievement.
+  reservedAt     DateTime?
+  // Officer-dismissed (e.g. a non-raider's stray reservation). Excluded from the
+  // unmatched queue without being resolved to a character.
+  ignored        Boolean      @default(false)
   softresSheet   SoftresSheet @relation(fields: [softresSheetId], references: [id], onDelete: Cascade)
   character      Character?   @relation(fields: [characterId], references: [id])
 
+  // One row per (sheet, reserved character name): the `items` array holds every
+  // item that name reserved on the sheet, so re-sync upserts rather than dupes.
+  @@unique([softresSheetId, rawName])
   @@map("reservations")
 }
 
