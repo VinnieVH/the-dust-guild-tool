@@ -1,3 +1,5 @@
+import type { ClaimInput } from "@/lib/domain/character";
+import type { ResolveReservationStore } from "@/lib/services/resolve-reservation-service";
 import type { SoftresSyncStore } from "@/lib/services/sync-softres-service";
 import { db } from "@/lib/db";
 
@@ -83,5 +85,66 @@ export const reservationRepository: SoftresSyncStore = {
       data: { ...meta, ...link },
     });
     return { created: false, matched: resolution.kind === "matched" };
+  },
+};
+
+// Backs the officer resolution actions (Link / Accept suggestion / Create /
+// Ignore). Kept distinct from the sync store: different concern, different
+// invariants. The alias insertion that preserves the resolve-once guarantee
+// happens in the service (resolve-reservation-service), not here.
+export const reservationResolveRepository: ResolveReservationStore = {
+  async getReservation(reservationId) {
+    return db.reservation.findUnique({
+      where: { id: reservationId },
+      select: { rawName: true, characterId: true, suggestedCharacterId: true },
+    });
+  },
+
+  async getCharacterName(characterId) {
+    const c = await db.character.findUnique({
+      where: { id: characterId },
+      select: { name: true },
+    });
+    return c?.name ?? null;
+  },
+
+  async setReservationCharacter(reservationId, characterId) {
+    await db.reservation.update({
+      where: { id: reservationId },
+      data: { characterId, suggestedCharacterId: null },
+    });
+  },
+
+  async ensureAlias(characterId, alias) {
+    // Idempotent: the @unique alias may already exist from a prior resolve.
+    await db.characterAlias.upsert({
+      where: { alias },
+      update: {},
+      create: { characterId, alias },
+    });
+  },
+
+  async createCharacter(input: ClaimInput) {
+    // Officer-created characters are unowned (userId null) — a real player
+    // claims them later via the normal claim flow. Throws on the @unique name
+    // violation, which the service translates to `name_taken`.
+    const created = await db.character.create({
+      data: {
+        name: input.name,
+        class: input.class,
+        spec: input.spec,
+        mainRole: input.mainRole,
+        userId: null,
+      },
+      select: { id: true },
+    });
+    return created.id;
+  },
+
+  async ignoreReservation(reservationId) {
+    await db.reservation.update({
+      where: { id: reservationId },
+      data: { ignored: true },
+    });
   },
 };
