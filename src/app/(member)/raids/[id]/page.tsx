@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ClassName } from "@/components/ui/class-name";
 import { PageContainer } from "@/components/ui/page-container";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { MainRole } from "@/lib/domain/enums";
+import { MainRole, Role } from "@/lib/domain/enums";
 import { SignupStatus } from "@/lib/domain/external";
 import {
   type RosterEntry,
@@ -16,8 +16,10 @@ import {
   buildPokeList,
   buildReminderText,
 } from "@/lib/services/reserve-overview-service";
+import { auth } from "@/lib/auth";
 import { CopyReminderButton } from "./copy-reminder-button";
 import { SrMatrix } from "./sr-matrix";
+import { SyncNowButton } from "./sync-now-button";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
@@ -87,6 +89,10 @@ export default async function RaidNightPage({
   const poke = buildPokeList(overview);
   const reminder = buildReminderText(poke);
 
+  // Officers get a manual "Sync now" button (reservations are pull-based).
+  const session = await auth();
+  const isOfficer = session?.user?.role === Role.OFFICER;
+
   return (
     <PageContainer>
       <header className="mb-6">
@@ -130,9 +136,12 @@ export default async function RaidNightPage({
 
       {overview.linkedInstances.length > 0 && (
         <Card className="mt-6">
-          <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-semibold text-fel-300">Soft-res completion</h2>
-            <CopyReminderButton text={reminder} />
+            <div className="flex flex-wrap items-center gap-2">
+              {isOfficer && <SyncNowButton raidNightId={night.id} />}
+              <CopyReminderButton text={reminder} />
+            </div>
           </div>
           <div className="mb-4">
             <ProgressBar

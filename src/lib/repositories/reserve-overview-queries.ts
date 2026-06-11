@@ -63,6 +63,22 @@ export async function getOverviewData(
   return { members, linkedInstances, reservations };
 }
 
+// Sheets for a single raid night — used by the officer "Sync now" button to
+// re-pull just this night's reservations on demand.
+export async function listSheetsForRaidNight(
+  raidNightId: string,
+): Promise<SoftresSheetRef[]> {
+  const sheets = await db.softresSheet.findMany({
+    where: { raidNightId },
+    select: { id: true, softresId: true, token: true },
+  });
+  return sheets.map((s) => ({
+    sheetId: s.id,
+    softresId: s.softresId,
+    token: s.token ?? undefined,
+  }));
+}
+
 // Sheets to sync via cron: every sheet of a raid night happening within the next
 // `days` days (and not already past). Returns the SoftresSheetRef[] syncSoftres
 // expects.
