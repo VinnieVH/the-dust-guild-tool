@@ -13,12 +13,12 @@ describe("decideGate", () => {
 
   it("requires a session for member routes", () => {
     expect(decideGate("/raids", null)).toEqual({ kind: "unauthorized", api: false });
-    expect(decideGate("/profile", null)).toEqual({ kind: "unauthorized", api: false });
+    expect(decideGate("/leaderboard", null)).toEqual({ kind: "unauthorized", api: false });
   });
 
   it("lets any signed-in user into member routes", () => {
     expect(decideGate("/raids", member)).toEqual({ kind: "allow" });
-    expect(decideGate("/profile", officer)).toEqual({ kind: "allow" });
+    expect(decideGate("/leaderboard", officer)).toEqual({ kind: "allow" });
   });
 
   it("forbids a MEMBER from officer routes", () => {

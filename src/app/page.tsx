@@ -5,7 +5,6 @@ import { auth, signIn } from "@/lib/auth";
 
 const HUB = [
   { href: "/raids", title: "Raids", body: "Upcoming nights, rosters and signups." },
-  { href: "/profile", title: "Profile", body: "Claim your characters and view your trophies." },
   { href: "/leaderboard", title: "Leaderboard", body: "Season standings across the guild." },
 ];
 

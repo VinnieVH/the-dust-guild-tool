@@ -2,7 +2,7 @@ import { Role } from "@/lib/domain/enums";
 
 // Pure, testable gating decision used by proxy.ts. Keeping it free of Next/
 // Auth.js types means the role logic can be unit-tested without a live session.
-export const MEMBER_PREFIXES = ["/raids", "/profile", "/leaderboard"];
+export const MEMBER_PREFIXES = ["/raids", "/leaderboard"];
 export const OFFICER_PREFIXES = ["/admin", "/api/admin"];
 
 export type GateDecision =

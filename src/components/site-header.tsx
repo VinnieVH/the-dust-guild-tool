@@ -24,9 +24,6 @@ export async function SiteHeader() {
             <Link href="/raids" className={navLink}>
               Raids
             </Link>
-            <Link href="/profile" className={navLink}>
-              Profile
-            </Link>
             <Link href="/leaderboard" className={navLink}>
               Leaderboard
             </Link>
