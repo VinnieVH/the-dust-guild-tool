@@ -1,0 +1,90 @@
+import { Instance } from "@/lib/domain/enums";
+import { SignupStatus } from "@/lib/domain/external";
+import type { SoftresSheetRef } from "@/lib/services/sync-softres-service";
+import type { OverviewData } from "@/lib/services/reserve-overview-service";
+import { db } from "@/lib/db";
+
+// Assemble the input for buildOverview: confirmed signups (+ their owned
+// character ids, across alts), which instances have a linked sheet, and every
+// matched reservation on those sheets. No business logic here — the service
+// turns this into the matrix.
+export async function getOverviewData(
+  raidNightId: string,
+): Promise<OverviewData> {
+  const night = await db.raidNight.findUnique({
+    where: { id: raidNightId },
+    select: {
+      signups: {
+        where: { status: SignupStatus.CONFIRMED },
+        select: {
+          user: {
+            select: {
+              discordId: true,
+              discordName: true,
+              characters: {
+                select: { id: true, name: true },
+                orderBy: { name: "asc" },
+              },
+            },
+          },
+        },
+      },
+      sheets: {
+        select: {
+          instance: true,
+          reservations: {
+            where: { characterId: { not: null } },
+            select: { characterId: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!night) {
+    return { members: [], linkedInstances: [], reservations: [] };
+  }
+
+  const members = night.signups.map((s) => ({
+    discordId: s.user.discordId,
+    displayName: s.user.characters[0]?.name ?? s.user.discordName,
+    characterIds: s.user.characters.map((c) => c.id),
+  }));
+
+  const linkedInstances = night.sheets.map((sh) => sh.instance as Instance);
+
+  const reservations = night.sheets.flatMap((sh) =>
+    sh.reservations.map((r) => ({
+      instance: sh.instance as Instance,
+      characterId: r.characterId as string, // filtered not-null above
+    })),
+  );
+
+  return { members, linkedInstances, reservations };
+}
+
+// Sheets to sync via cron: every sheet of a raid night happening within the next
+// `days` days (and not already past). Returns the SoftresSheetRef[] syncSoftres
+// expects.
+export async function listSheetsToSync(days = 7): Promise<SoftresSheetRef[]> {
+  const now = new Date();
+  const horizon = new Date(now);
+  horizon.setDate(horizon.getDate() + days);
+
+  const sheets = await db.softresSheet.findMany({
+    where: { raidNight: { date: { gte: startOfDay(now), lte: horizon } } },
+    select: { id: true, softresId: true, token: true },
+  });
+
+  return sheets.map((s) => ({
+    sheetId: s.id,
+    softresId: s.softresId,
+    token: s.token ?? undefined,
+  }));
+}
+
+function startOfDay(d: Date): Date {
+  const copy = new Date(d);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
