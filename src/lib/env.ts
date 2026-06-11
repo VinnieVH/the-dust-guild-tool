@@ -10,8 +10,8 @@ const schema = z.object({
   // --- Required from Phase 1 ---
   DATABASE_URL: z.string().url(),
   AUTH_SECRET: z.string().min(1),
-  AUTH_DISCORD_ID: z.string().min(1),
-  AUTH_DISCORD_SECRET: z.string().min(1),
+  AUTH_DISCORD_CLIENT_ID: z.string().min(1),
+  AUTH_DISCORD_CLIENT_SECRET: z.string().min(1),
 
   // --- Optional now; required by the phase noted ---
   OFFICER_DISCORD_IDS: z.string().optional(), // seed (1.3)

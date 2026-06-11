@@ -4,8 +4,8 @@ import { parseEnv } from "@/lib/env";
 const valid = {
   DATABASE_URL: "postgresql://u:p@localhost:5433/db?schema=public",
   AUTH_SECRET: "secret",
-  AUTH_DISCORD_ID: "id",
-  AUTH_DISCORD_SECRET: "shh",
+  AUTH_DISCORD_CLIENT_ID: "id",
+  AUTH_DISCORD_CLIENT_SECRET: "shh",
 } satisfies Record<string, string | undefined>;
 
 describe("parseEnv", () => {
@@ -29,8 +29,8 @@ describe("parseEnv", () => {
     } catch (e) {
       const msg = (e as Error).message;
       expect(msg).toContain("AUTH_SECRET");
-      expect(msg).toContain("AUTH_DISCORD_ID");
-      expect(msg).toContain("AUTH_DISCORD_SECRET");
+      expect(msg).toContain("AUTH_DISCORD_CLIENT_ID");
+      expect(msg).toContain("AUTH_DISCORD_CLIENT_SECRET");
     }
   });
 
