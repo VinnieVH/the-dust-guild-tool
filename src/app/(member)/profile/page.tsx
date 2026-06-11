@@ -2,7 +2,6 @@ import { ClassName } from "@/components/ui/class-name";
 import { PageContainer } from "@/components/ui/page-container";
 import { characterRepository } from "@/lib/repositories/character-repository";
 import { auth } from "@/lib/auth";
-import { ClaimForm } from "./claim-form";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -13,10 +12,17 @@ export default async function ProfilePage() {
 
   return (
     <PageContainer>
-      <section className="mb-8">
+      <section>
         <h1 className="text-xl font-semibold text-fel-300">My characters</h1>
         {characters.length === 0 ? (
-          <p className="mt-2 text-fel-200">No characters claimed yet. Claim one below.</p>
+          <div className="mt-2 text-fel-200">
+            <p>No characters linked yet.</p>
+            <p className="mt-1 text-sm">
+              Characters are linked automatically from your Raid-Helper signups
+              when you log in. If one is missing — an alt you haven&apos;t signed
+              up with, or a role-only signup — ask an officer to link it.
+            </p>
+          </div>
         ) : (
           <ul className="mt-3 flex flex-col gap-1">
             {characters.map((c) => (
@@ -29,11 +35,6 @@ export default async function ProfilePage() {
             ))}
           </ul>
         )}
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-fel-300">Claim a character</h2>
-        <ClaimForm />
       </section>
     </PageContainer>
   );
