@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Dust — Guild Management Tool
 
-## Getting Started
+Raid signups, soft-reserve tracking, and automated achievements for a WoW TBC
+raiding guild. Next.js (App Router) · TypeScript · Prisma · PostgreSQL · Auth.js.
 
-First, run the development server:
+See `docs/plans/2026-06-11-guild-tool-design.md` (what) and
+`docs/implementation-plan.md` (how).
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+yarn install
+cp .env.example .env        # then fill in the values
+docker compose up -d        # Postgres on host port 5433
+yarn db:migrate             # apply migrations
+yarn db:seed                # promote OFFICER_DISCORD_IDS to officers
+yarn dev                    # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+All variables are documented in `.env.example` and validated at boot by
+`src/lib/env.ts` (the app fails fast with a readable error on a missing one).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Tests
 
-## Learn More
+```bash
+yarn test               # unit (no DB needed)
+yarn test:integration   # integration (needs docker-compose Postgres up)
+yarn test:all           # both
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Syncing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Sync jobs pull from external APIs into Postgres; the UI only ever reads from
+Postgres (no live API calls during render). Each `/api/cron/*` endpoint is
+guarded by `Authorization: Bearer ${CRON_SECRET}`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Option A — Vercel Cron (default)
 
-## Deploy on Vercel
+`vercel.json` schedules the sync. Set `CRON_SECRET` in the Vercel project; Vercel
+Cron sends it as the bearer automatically.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```json
+{ "crons": [{ "path": "/api/cron/sync-raid-helper", "schedule": "*/30 * * * *" }] }
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Option B — self-hosted worker
+
+If not on Vercel, trigger the same endpoint from any scheduler (cron, systemd
+timer, a small `node-cron` worker):
+
+```bash
+*/30 * * * * curl -fsS -X POST \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  https://your-host/api/cron/sync-raid-helper
+```
+
+Syncs are idempotent — running one twice yields identical DB state, so a missed
+or duplicated tick is harmless.
