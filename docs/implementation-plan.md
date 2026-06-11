@@ -256,15 +256,35 @@ export interface IPerformanceSource {
   - **Link** to a character (accept suggestion or pick from search) → sets `characterId` **and** inserts a `character_aliases` row for `rawName` (this is the resolve-once guarantee).
   - **Create character** (officer creates unowned character with that name, `userId` null) → link.
   - **Ignore** (add `ignored: Boolean @default(false)` to `reservations` in the same migration).
-- Unit tests for the sync decision table (exact/alias/suggest/unmatched) and for "alias inserted on manual link".
-- **Accept:** after officer resolves a name once, the next sync auto-links the same `rawName` with no queue entry.
+- Officer UI (`/admin/raid-nights` + `/admin/raid-nights/[id]` for sheet linking,
+  `/admin/unmatched` for the queue) — see Step 3.3. Queue filter is
+  `characterId IS NULL AND ignored = false` (suggested rows DO appear, with a
+  one-click accept; ignored rows drop out).
+- Tests: `tests/unit/sync-softres-service.test.ts` (decision table + idempotency),
+  `tests/unit/resolve-reservation-service.test.ts` (alias-inserted-on-link).
+- **Accept:** ✅ after an officer resolves a name once, the next sync auto-links
+  the same `rawName` with no queue entry (verified live in
+  `tests/integration/sync-softres.test.ts`).
 
-### Step 3.5 — SR overview matrix + poke list
-- `services/reserve-overview-service.ts#buildOverview(raidNightId)` returns, per signed-up member: signup status, SSC done?, TK done? A member counts as "done" for an instance when **any reservation on that sheet resolves to any character they own**.
-- `/(member)/raids/[id]` gains the matrix: rows = confirmed signups, columns = *Signed up / SSC / TK*, green check / red cross cells; XP-style progress bar on top: "SR completion: 18/25".
-- Poke list section: members missing ≥1 sheet. **"Copy Discord reminder"** button builds a message with Discord mentions (`<@discordId>`) listing who is missing which sheet, copies to clipboard.
-- Unit tests for `buildOverview` (member with both, one, none; member with two characters where the alt reserved; signup without any claimed character → shows as missing with a "no character claimed" hint).
-- **Accept:** full flow works end-to-end with fixture-seeded data: sync signups → link sheets → sync reservations → matrix shows correct red/green → reminder text is correct. **Ship this to the guild.**
+### Step 3.5 — SR overview matrix + poke list — DONE
+- `services/reserve-overview-service.ts#buildOverview(data)` returns, per
+  confirmed signup: SSC done?, TK done?, hasCharacter. "Done" for an instance =
+  **any reservation on that sheet resolves to any character they own** (covers
+  alts). Pure; fed by `reserve-overview-queries.ts#getOverviewData`.
+- `/(member)/raids/[id]` gains the matrix (rows = confirmed signups, a column per
+  **linked** instance, green ✓ / red ✗), an XP-style "SR completion: n/total"
+  progress bar, and the **"Copy Discord reminder"** button — `buildReminderText`
+  builds `<@discordId>` mentions listing who's missing which sheet (with a "no
+  character claimed" hint), copied client-side.
+- Cron `/api/cron/sync-softres` (same `CRON_SECRET` guard) syncs sheets of nights
+  within 7 days. (vercel.json cron entry deferred to deploy/hardening.)
+- Tests: `tests/unit/reserve-overview-service.test.ts` (both/one/none, alt
+  reserved, no-character) + the live `tests/integration/sync-softres.test.ts`
+  proving the full chain against Postgres.
+- **Accept:** ✅ end-to-end verified live: sync reservations → matrix shows
+  correct red/green → completion count → reminder text correct → resolve-once
+  holds on re-sync. **Ready to ship to the guild** (pending Discord-login on the
+  guild's real sheets so `dId` is populated).
 
 ---
 
