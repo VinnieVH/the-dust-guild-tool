@@ -32,6 +32,20 @@ describe("buildOverview", () => {
     });
     expect(o.rows[0]).toMatchObject({ ssc: true, tk: false });
     expect(o.completed).toBe(0);
+    // Per-instance bars: SSC ahead of TK.
+    expect(o.perInstance).toEqual([
+      { instance: Instance.SSC, done: 1, total: 1 },
+      { instance: Instance.TK, done: 0, total: 1 },
+    ]);
+  });
+
+  it("reports perInstance only for linked instances", () => {
+    const o = buildOverview({
+      members: [{ discordId: "d1", displayName: "X", characterIds: ["c1"] }],
+      linkedInstances: [Instance.TK],
+      reservations: [{ instance: Instance.TK, characterId: "c1" }],
+    });
+    expect(o.perInstance).toEqual([{ instance: Instance.TK, done: 1, total: 1 }]);
   });
 
   it("marks missing on both when they reserved nothing", () => {

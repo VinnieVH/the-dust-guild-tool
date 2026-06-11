@@ -21,6 +21,9 @@ export interface ReserveOverview {
    *  done every LINKED instance. */
   completed: number;
   total: number;
+  /** Per-instance completion (only for linked instances) so the UI can show one
+   *  progress bar per sheet — e.g. SSC 0/18, TK 1/18 side by side. */
+  perInstance: { instance: Instance; done: number; total: number }[];
 }
 
 // Input the overview is built from — supplied by a query port (no Prisma here).
@@ -68,11 +71,18 @@ export function buildOverview(data: OverviewData): ReserveOverview {
   const isComplete = (row: OverviewRow): boolean =>
     data.linkedInstances.every((i) => (i === Instance.SSC ? row.ssc : row.tk));
 
+  const perInstance = data.linkedInstances.map((instance) => ({
+    instance,
+    done: rows.filter((r) => (instance === Instance.SSC ? r.ssc : r.tk)).length,
+    total: rows.length,
+  }));
+
   return {
     rows,
     linkedInstances: data.linkedInstances,
     completed: rows.filter(isComplete).length,
     total: rows.length,
+    perInstance,
   };
 }
 

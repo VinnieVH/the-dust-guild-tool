@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ClassName } from "@/components/ui/class-name";
 import { PageContainer } from "@/components/ui/page-container";
-import { ProgressBar } from "@/components/ui/progress-bar";
 import { MainRole, Role } from "@/lib/domain/enums";
 import { SignupStatus } from "@/lib/domain/external";
 import {
@@ -19,6 +18,7 @@ import {
 import { auth } from "@/lib/auth";
 import { CopyReminderButton } from "./copy-reminder-button";
 import { SrMatrix } from "./sr-matrix";
+import { SrProgress } from "./sr-progress";
 import { SyncNowButton } from "./sync-now-button";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
@@ -144,11 +144,7 @@ export default async function RaidNightPage({
             </div>
           </div>
           <div className="mb-4">
-            <ProgressBar
-              value={overview.completed}
-              max={overview.total}
-              label="SR completion"
-            />
+            <SrProgress overview={overview} />
           </div>
           <SrMatrix overview={overview} />
           {poke.length > 0 && (
