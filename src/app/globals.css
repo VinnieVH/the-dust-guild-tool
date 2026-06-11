@@ -1,26 +1,45 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Fel theme (design doc §7). Dark Legion backgrounds, fel-green accents, gold
+ * reserved for achievements, epic purple as a secondary accent.
+ * Accessibility (§6): body text uses the lighter fel tints (fel-200/300) for
+ * >= 4.5:1 contrast on dark; the saturated fel (fel-500 + glow) is for accents
+ * and borders only, never body copy.
+ */
+@theme {
+  /* Legion dark backgrounds */
+  --color-legion-950: #07090a;
+  --color-legion-900: #0b0f0c;
+  --color-legion-800: #121a15;
+  --color-legion-700: #1b241d;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Fel green ramp */
+  --color-fel-100: #e8ffd6;
+  --color-fel-200: #c6ff95;
+  --color-fel-300: #a6ff5c;
+  --color-fel-400: #86f52e;
+  --color-fel-500: #7fff00;
+  --color-fel-600: #5fcc00;
+  --color-fel-700: #468f00;
+  --color-fel-800: #2f5e00;
+  --color-fel-900: #1c3800;
+  --color-fel-glow: #39ff14;
+
+  /* Accent + quality colors */
+  --color-epic: #a335ee;
+  --color-gold: #ffb100;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: var(--color-legion-900);
+  --foreground: var(--color-fel-200);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
