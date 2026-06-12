@@ -13,50 +13,50 @@
  * (fel-500/glow) is for accents, borders and glows only, never body copy.
  */
 @theme {
-  /* Charred obsidian backgrounds — carbonized, near-lightless */
-  --color-legion-950: #050605;
-  --color-legion-900: #0a0c0a;
-  --color-legion-800: #11150f;
-  --color-legion-700: #1a2016;
+	/* Charred obsidian backgrounds — carbonized, near-lightless */
+	--color-legion-950: #050605;
+	--color-legion-900: #0a0c0a;
+	--color-legion-800: #11150f;
+	--color-legion-700: #1a2016;
 
-  /* Fel green ramp — anchored on #13FF29 / #67F100 / #7FD81E */
-  --color-fel-100: #ecffe2;
-  --color-fel-200: #c7ff9f;
-  --color-fel-300: #95f95a;
-  --color-fel-400: #67f100;
-  --color-fel-500: #13ff29;
-  --color-fel-600: #7fd81e;
-  --color-fel-700: #4f9a14;
-  --color-fel-800: #2f5e0c;
-  --color-fel-900: #18340a;
-  --color-fel-glow: #13ff29;
+	/* Fel green ramp — anchored on #13FF29 / #67F100 / #7FD81E */
+	--color-fel-100: #ecffe2;
+	--color-fel-200: #c7ff9f;
+	--color-fel-300: #95f95a;
+	--color-fel-400: #67f100;
+	--color-fel-500: #13ff29;
+	--color-fel-600: #7fd81e;
+	--color-fel-700: #4f9a14;
+	--color-fel-800: #2f5e0c;
+	--color-fel-900: #18340a;
+	--color-fel-glow: #13ff29;
 
-  /* Sargeras yellow — concentrated fel bursts (highlights, CTAs) */
-  --color-sargeras: #eeff08;
+	/* Sargeras yellow — concentrated fel bursts (highlights, CTAs) */
+	--color-sargeras: #eeff08;
 
-  /* Shadow & void accents */
-  --color-void-violet: #711c58; /* shocking violet (demonic purple) */
-  --color-void-indigo: #1e1130; /* Twisting Nether / Legion architecture */
+	/* Shadow & void accents */
+	--color-void-violet: #711c58; /* shocking violet (demonic purple) */
+	--color-void-indigo: #1e1130; /* Twisting Nether / Legion architecture */
 
-  /* Felfire orange — embers, braziers, demon eyes */
-  --color-felfire: #ff6a13;
+	/* Felfire orange — embers, braziers, demon eyes */
+	--color-felfire: #ff6a13;
 
-  /* Item-quality colors */
-  --color-epic: #a335ee; /* WoW epic purple (kept for item borders) */
-  --color-gold: #ffce1f; /* achievements — warm fel-gold */
+	/* Item-quality colors */
+	--color-epic: #a335ee; /* WoW epic purple (kept for item borders) */
+	--color-gold: #ffce1f; /* achievements — warm fel-gold */
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+	--font-sans: var(--font-geist-sans);
+	--font-mono: var(--font-geist-mono);
 }
 
 :root {
-  --background: var(--color-legion-900);
-  --foreground: var(--color-fel-200);
+	--background: var(--color-legion-900);
+	--foreground: var(--color-fel-200);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+	background: var(--background);
+	color: var(--foreground);
 }
 
 /*
@@ -65,54 +65,38 @@ body {
  * it never carries text. Used by the home hero and other ambient surfaces.
  */
 .fel-atmosphere {
-  background-color: var(--color-legion-950);
-  background-image:
-    radial-gradient(
-      70% 60% at 50% -10%,
-      color-mix(in srgb, var(--color-fel-glow) 24%, transparent) 0%,
-      transparent 72%
-    ),
-    radial-gradient(
-      45% 55% at 88% 20%,
-      color-mix(in srgb, var(--color-void-violet) 40%, transparent) 0%,
-      transparent 70%
-    ),
-    linear-gradient(
-      to right,
-      color-mix(in srgb, var(--color-fel-600) 12%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--color-fel-600) 12%, transparent) 1px,
-      transparent 1px
-    );
-  background-size:
-    100% 100%,
-    100% 100%,
-    46px 46px,
-    46px 46px;
+	background-color: var(--color-legion-950);
+	background-image:
+		radial-gradient(70% 60% at 50% -10%, color-mix(in srgb, var(--color-fel-glow) 24%, transparent) 0%, transparent 72%),
+		radial-gradient(45% 55% at 88% 20%, color-mix(in srgb, var(--color-void-violet) 40%, transparent) 0%, transparent 70%),
+		linear-gradient(to right, color-mix(in srgb, var(--color-fel-600) 12%, transparent) 1px, transparent 1px),
+		linear-gradient(to bottom, color-mix(in srgb, var(--color-fel-600) 12%, transparent) 1px, transparent 1px);
+	background-size:
+		100% 100%,
+		100% 100%,
+		46px 46px,
+		46px 46px;
 }
 
 /* Animated text shimmer for the hero wordmark; falls still for reduced motion. */
 @keyframes fel-pulse {
-  0%,
-  100% {
-    text-shadow: 0 0 18px color-mix(in srgb, var(--color-fel-glow) 45%, transparent);
-  }
-  50% {
-    text-shadow: 0 0 30px color-mix(in srgb, var(--color-fel-glow) 70%, transparent);
-  }
+	0%,
+	100% {
+		text-shadow: 0 0 18px color-mix(in srgb, var(--color-fel-glow) 45%, transparent);
+	}
+	50% {
+		text-shadow: 0 0 30px color-mix(in srgb, var(--color-fel-glow) 70%, transparent);
+	}
 }
 
 .fel-glow-text {
-  text-shadow: 0 0 18px color-mix(in srgb, var(--color-fel-glow) 45%, transparent);
+	text-shadow: 0 0 18px color-mix(in srgb, var(--color-fel-glow) 45%, transparent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .fel-glow-text {
-    animation: fel-pulse 4s ease-in-out infinite;
-  }
+	.fel-glow-text {
+		animation: fel-pulse 4s ease-in-out infinite;
+	}
 }
 
 /*
@@ -131,55 +115,39 @@ body {
  * a second file instead of the mirror — see `.fel-gutter--right`.
  */
 .fel-gutter {
-  background-color: var(--color-legion-950);
-  background-image:
+	background-color: var(--color-legion-950);
+	background-image:
     /* darkening veil — keeps any real image dim/ambient, not attention-grabbing */
-    linear-gradient(
-      to bottom,
-      rgba(5, 6, 5, 0.72),
-      rgba(5, 6, 5, 0.72)
-    ),
-    /* the drop-in scenery (absent until you add the file) — one tall image,
+		linear-gradient(to bottom, rgba(5, 6, 5, 0.3), rgba(5, 6, 5, 0.3)),
+		/* the drop-in scenery (absent until you add the file) — one tall image,
        cropped to fill, anchored to the outer edge */
-    url("/gutter.jpg"),
-    /* --- fallback fel atmosphere (shown when no image is present) --- */
-    /* a faint fel column hugging the outer edge */
-    radial-gradient(
-      55% 55% at 0% 35%,
-      color-mix(in srgb, var(--color-fel-glow) 6%, transparent) 0%,
-      transparent 68%
-    ),
-    /* the same obsidian grid as the hero, echoed very faintly */
-    linear-gradient(
-      to right,
-      color-mix(in srgb, var(--color-fel-600) 6%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--color-fel-600) 6%, transparent) 1px,
-      transparent 1px
-    );
-  background-size:
-    100% 100%,
-    cover,
-    100% 100%,
-    46px 46px,
-    46px 46px;
-  background-position:
-    center,
-    left center,
-    center,
-    center,
-    center;
-  background-repeat: no-repeat;
-  /* Fade the panel out well before the content column so only the outer edge
-     carries any glow/art — keeps attention firmly on the center. */
-  -webkit-mask-image: linear-gradient(to right, black 0%, transparent 62%);
-  mask-image: linear-gradient(to right, black 0%, transparent 62%);
+		url("/gutter.jpg"),
+		/* --- fallback fel atmosphere (shown when no image is present) --- */ /* a faint fel column hugging the outer edge */
+		radial-gradient(55% 55% at 0% 35%, color-mix(in srgb, var(--color-fel-glow) 6%, transparent) 0%, transparent 68%),
+		/* the same obsidian grid as the hero, echoed very faintly */
+		linear-gradient(to right, color-mix(in srgb, var(--color-fel-600) 6%, transparent) 1px, transparent 1px),
+		linear-gradient(to bottom, color-mix(in srgb, var(--color-fel-600) 6%, transparent) 1px, transparent 1px);
+	background-size:
+		100% 100%,
+		cover,
+		100% 100%,
+		46px 46px,
+		46px 46px;
+	background-position:
+		center,
+		left center,
+		center,
+		center,
+		center;
+	background-repeat: no-repeat;
+	/* Fade the panel out gradually toward the content column. A higher transparent
+     stop = the art carries further in before vanishing (slower fade); keep some
+     gap before the content so the center still breathes. */
+	-webkit-mask-image: linear-gradient(to right, black 0%, transparent 88%);
+	mask-image: linear-gradient(to right, black 0%, transparent 88%);
 }
 
 /* Right gutter mirrors the left so the two sides are symmetric. */
 .fel-gutter--right {
-  transform: scaleX(-1);
+	transform: scaleX(-1);
 }
