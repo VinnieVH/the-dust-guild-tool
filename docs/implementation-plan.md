@@ -302,6 +302,61 @@ export interface IPerformanceSource {
 
 ---
 
+## Alts — one Discord id owns many characters (cross-cutting, recorded 2026-06-12)
+
+> A single Discord id legitimately maps to **multiple characters** (a main +
+> alts), and they may be different classes/roles — e.g. Skreamo signs up to SSC/TK
+> as an Arms Warrior and to a Kara night as a Destruction Warlock alt, under the
+> same Discord name. This is a first-class case, not an edge case.
+
+**The schema already supports it.** `User` 1:N `Character` (`Character.userId`
+nullable), and `Character.name` (`@unique`) is the cross-integration linking key.
+softres and WCL resolution match on the **real in-game name**, so an alt with its
+own true name resolves to its own `Character` independently of the main. No schema
+change needed; do **not** drop `@unique` on `Character.name` (it is the linking key
+Phases 3 and 4 both depend on) and do **not** add any `discordId → single
+character` shortcut anywhere in resolution.
+
+**Where "1 Discord = 1 character" was actually baked in — the Raid-Helper path.**
+Raid-Helper gives **one display name per signup** (the Discord nickname, e.g.
+"Skreamo") plus that signup's `class`/`spec`/`role`. It does **not** carry the
+alt's real in-game name. So two things were wrong and are fixed as part of Phase 4
+prep / Phase 2 correction:
+
+1. **Roster query (`raid-queries.ts#getRaidNightDetail`) ignored the per-signup
+   class.** It showed `user.characters[0]` (first claimed character, alphabetical),
+   so a Kara warlock signup rendered as the user's Warrior main. **Fix:** the
+   roster (and the SR-matrix `getOverviewData`) reads `Signup.characterName` +
+   `Signup.class` per night, falling back to the Discord name only when the signup
+   carried none. Note the displayed **name** is the Raid-Helper *Discord nickname*
+   (RH never carries the alt's real in-game name), so the warlock row reads
+   "Skreamo" + Warlock — the **class** is per-night accurate, the name is the nick.
+   That's honest and cosmetic (the reminder uses `<@discordId>` mentions, not the
+   name). The SR matrix still keys "done" off *any* character the user owns being
+   reserved (`characterIds` = all owned), so it already covers alts.
+2. **Auto-claim (`auto-claim.ts`) deduped by name with an arbitrary winner.** Both
+   signups carry `characterName: "Skreamo"`, and `byName.set(...)` was last-write
+   by Map insertion order, so *which class* "Skreamo" got registered as was
+   arbitrary (claim then no-ops forever via `already_yours`, so it's not overwritten
+   later — just arbitrarily chosen once). **Corrected contract:** auto-claim creates
+   **at most one `Character` per Discord display name** and picks the representative
+   class **deterministically** (most-frequent class across the user's signups,
+   alphabetical tie-break) so it no longer depends on row order. This is a
+   determinism/quality fix, not a correctness one — the per-night roster now reads
+   from `Signup` (item 1), so the registry only needs one stable main per name. The
+   alt's *real* `Character` still enters via self-claim or softres/WCL real-name
+   resolution — **never** fabricated from a Raid-Helper signup (a synthetic name
+   like "Skreamo (Warlock)" would never match the warlock's real name and would
+   manufacture duplicates an officer must merge).
+
+**Net:** alts are tracked at the **signup/roster layer** (per-night, class-aware)
+and at the **real-name source layer** (softres/WCL → true `Character` rows). The
+Raid-Helper path deliberately tracks only the main per Discord name, because it
+physically lacks the alt's name. Phase 4 (below) needs no special alt handling so
+long as WCL resolution stays name-based.
+
+---
+
 ## Phase 4 — Warcraft Logs + achievements
 
 ### Step 4.1 — WCL adapter

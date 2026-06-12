@@ -16,13 +16,17 @@ export async function getOverviewData(
       signups: {
         where: { status: SignupStatus.CONFIRMED },
         select: {
+          // As signed up this night (alt-aware): the display name/class come
+          // from the signup, not a character lookup. `characters` is kept only
+          // to collect ALL owned character ids for done-matching across alts.
+          characterName: true,
+          class: true,
           user: {
             select: {
               discordId: true,
               discordName: true,
               characters: {
-                select: { id: true, name: true, class: true },
-                orderBy: { name: "asc" },
+                select: { id: true },
               },
             },
           },
@@ -48,8 +52,8 @@ export async function getOverviewData(
 
   const members = night.signups.map((s) => ({
     discordId: s.user.discordId,
-    displayName: s.user.characters[0]?.name ?? s.user.discordName,
-    displayClass: s.user.characters[0]?.class ?? null,
+    displayName: s.characterName ?? s.user.discordName,
+    displayClass: s.class,
     characterIds: s.user.characters.map((c) => c.id),
   }));
 

@@ -82,18 +82,13 @@ export async function getRaidNightDetail(
           status: true,
           specSignedAs: true,
           role: true,
-          user: {
-            select: {
-              discordName: true,
-              // A user may own multiple characters; for the roster we show the
-              // first claimed character's name/class if present.
-              characters: {
-                select: { name: true, class: true },
-                orderBy: { name: "asc" },
-                take: 1,
-              },
-            },
-          },
+          // The as-signed-up identity, persisted per night. A user owns many
+          // characters (main + alts) and signs up as a specific one each night,
+          // so the roster MUST read the signup's own name/class — not a character
+          // looked up off the user — or an alt's night renders as the main.
+          characterName: true,
+          class: true,
+          user: { select: { discordName: true } },
         },
         orderBy: { specSignedAs: "asc" },
       },
@@ -103,10 +98,11 @@ export async function getRaidNightDetail(
   if (!night) return null;
 
   const roster: RosterEntry[] = night.signups.map((s) => {
-    const character = s.user.characters[0];
     return {
-      name: character?.name ?? s.user.discordName,
-      class: character?.class ?? null,
+      // As signed up: Raid-Helper gives the display name + the class for THIS
+      // signup. Fall back to the Discord name only when the signup omitted one.
+      name: s.characterName ?? s.user.discordName,
+      class: s.class,
       spec: s.specSignedAs,
       role: s.role,
       status: s.status,
