@@ -15,6 +15,12 @@ export interface UnmatchedReservation {
   suggestion: { characterId: string; name: string } | null;
 }
 
+// Count of reservations awaiting resolution — same filter as the queue. Drives
+// the badge on the admin nav so officers know there's work waiting.
+export async function countUnmatchedReservations(): Promise<number> {
+  return db.reservation.count({ where: { characterId: null, ignored: false } });
+}
+
 // The queue: reservations with no character AND not ignored. `suggested` rows
 // (characterId null, suggestedCharacterId set) DO appear here — the suggestion
 // is shown for one-click accept. Ignored rows drop out.

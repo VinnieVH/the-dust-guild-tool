@@ -17,11 +17,13 @@ export interface AdminRaidNightDetail {
   sheets: { instance: Instance; softresId: string }[];
 }
 
-// Recent + upcoming nights, soonest-future first then recent past, so officers
-// can link sheets ahead of a raid and fix up afterwards.
-export async function listRaidNightsForAdmin(): Promise<
-  AdminRaidNightListItem[]
-> {
+// Recent + upcoming nights, split into upcoming (soonest first) and past
+// (most recent first). Partitioning here keeps `Date.now()` out of the render
+// (React purity rule) — the server query is the right place for "now".
+export async function listRaidNightsForAdmin(): Promise<{
+  upcoming: AdminRaidNightListItem[];
+  past: AdminRaidNightListItem[];
+}> {
   const nights = await db.raidNight.findMany({
     orderBy: { date: "desc" },
     take: 30,
@@ -32,12 +34,19 @@ export async function listRaidNightsForAdmin(): Promise<
       _count: { select: { sheets: true } },
     },
   });
-  return nights.map((n) => ({
+  const items = nights.map((n) => ({
     id: n.id,
     title: n.title,
     date: n.date,
     sheetCount: n._count.sheets,
   }));
+
+  const now = Date.now();
+  const upcoming = items
+    .filter((n) => n.date.getTime() >= now)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const past = items.filter((n) => n.date.getTime() < now);
+  return { upcoming, past };
 }
 
 export async function getRaidNightForAdmin(
