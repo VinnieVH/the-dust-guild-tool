@@ -1,12 +1,11 @@
-import { Instance } from "@/lib/domain/enums";
 import { SignupStatus } from "@/lib/domain/external";
 import type { SoftresSheetRef } from "@/lib/services/sync-softres-service";
 import type { OverviewData } from "@/lib/services/reserve-overview-service";
 import { db } from "@/lib/db";
 
 // Assemble the input for buildOverview: confirmed signups (+ their owned
-// character ids, across alts), which instances have a linked sheet, and every
-// matched reservation on those sheets. No business logic here — the service
+// character ids, across alts), the night's linked sheets (matrix columns), and
+// every matched reservation keyed by sheet. No business logic — the service
 // turns this into the matrix.
 export async function getOverviewData(
   raidNightId: string,
@@ -30,8 +29,10 @@ export async function getOverviewData(
         },
       },
       sheets: {
+        orderBy: { name: "asc" },
         select: {
-          instance: true,
+          id: true,
+          name: true,
           reservations: {
             where: { characterId: { not: null } },
             select: { characterId: true },
@@ -42,7 +43,7 @@ export async function getOverviewData(
   });
 
   if (!night) {
-    return { members: [], linkedInstances: [], reservations: [] };
+    return { members: [], sheets: [], reservations: [] };
   }
 
   const members = night.signups.map((s) => ({
@@ -51,16 +52,16 @@ export async function getOverviewData(
     characterIds: s.user.characters.map((c) => c.id),
   }));
 
-  const linkedInstances = night.sheets.map((sh) => sh.instance as Instance);
+  const sheets = night.sheets.map((sh) => ({ sheetId: sh.id, name: sh.name }));
 
   const reservations = night.sheets.flatMap((sh) =>
     sh.reservations.map((r) => ({
-      instance: sh.instance as Instance,
+      sheetId: sh.id,
       characterId: r.characterId as string, // filtered not-null above
     })),
   );
 
-  return { members, linkedInstances, reservations };
+  return { members, sheets, reservations };
 }
 
 // Sheets for a single raid night — used by the officer "Sync now" button to

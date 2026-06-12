@@ -226,10 +226,23 @@ export interface IPerformanceSource {
   covered by constructed inputs, not recorded ones.
 - **Accept:** ✅ mapper + URL parser tests green.
 
-### Step 3.3 — Link sheets to a raid night (officer UI)
-- `/admin/raid-nights/[id]`: form with two URL fields — SSC sheet and TK sheet. Server action parses, validates, upserts the two `SoftresSheet` rows (`instance: SSC` / `TK`).
-- Guard: a raid night can have at most one sheet per instance; re-submitting replaces the sheet ID (and orphans old reservations via cascade or explicit delete — choose explicit delete, log it).
-- **Accept:** an officer can paste both links; `softres_sheets` shows exactly two rows for the night.
+### Step 3.3 — Link sheets to a raid night (officer UI) — DONE
+> **Deviation (2026-06-12):** the original "exactly two SSC+TK sheets" assumption
+> (design doc §4) was dropped. Not every night has two raids (e.g. a Kara night
+> has one), and sheets are now **officer-named, 0..N per night**. Migration
+> `softres_sheet_named` replaced `SoftresSheet.instance Instance` with
+> `name String`, unique per night (identity-preserving: existing SSC/TK rows kept
+> their label as the name). The `Instance` enum stays for `WclReport` (Phase 4),
+> which detects the zone independently — softres sheets never joined to it.
+- `/admin/raid-nights/[id]`: a **SheetManager** lists the night's sheets
+  (name + softres link + Remove) and an "Add sheet" row (name + URL). Adding
+  syncs that sheet immediately; removing deletes it and its reservations
+  (cascade). Editing a sheet's link orphan-deletes the old reservations (logged).
+  All actions are officer-gated server-side.
+- `/admin/raid-nights`: roomier layout, upcoming/past split, and an
+  **Unmatched queue** link with a pending-count badge.
+- **Accept:** ✅ an officer can add/remove any number of named sheets; the SR
+  matrix renders one column per sheet.
 
 ### Step 3.4 — Reservation sync + resolution queue
 - **Schema (done):** `reservations` reshaped via migration

@@ -77,13 +77,17 @@ model RaidNight {
 model SoftresSheet {
   id           String        @id @default(cuid())
   raidNightId  String
-  instance     Instance
+  // Officer-typed label shown as the matrix column header (e.g. "SSC", "Kara").
+  // A night can have 0..N sheets — the old fixed SSC/TK Instance enum was a v1
+  // assumption (see implementation-plan §3.3 deviation). The Instance enum lives
+  // on for WclReport (Phase 4), which detects the zone independently.
+  name         String
   softresId    String
   token        String?
   raidNight    RaidNight     @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
   reservations Reservation[]
 
-  @@unique([raidNightId, instance]) // one sheet per instance per night
+  @@unique([raidNightId, name]) // names are unique per night
   @@map("softres_sheets")
 }
 

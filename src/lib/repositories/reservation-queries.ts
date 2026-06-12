@@ -1,4 +1,3 @@
-import type { Instance } from "@/lib/domain/enums";
 import { db } from "@/lib/db";
 
 // Read-side view models for the officer unmatched queue. UI reads only these.
@@ -8,7 +7,7 @@ export interface UnmatchedReservation {
   rawName: string;
   rawClass: string | null;
   discordId: string | null;
-  instance: Instance;
+  sheetName: string;
   raidNightId: string;
   raidNightTitle: string;
   /** dId-based suggestion, if the sync found one. */
@@ -38,7 +37,7 @@ export async function listUnmatchedReservations(): Promise<
       suggestedCharacterId: true,
       softresSheet: {
         select: {
-          instance: true,
+          name: true,
           raidNight: { select: { id: true, title: true } },
         },
       },
@@ -63,7 +62,7 @@ export async function listUnmatchedReservations(): Promise<
     rawName: r.rawName,
     rawClass: r.rawClass,
     discordId: r.discordId,
-    instance: r.softresSheet.instance as Instance,
+    sheetName: r.softresSheet.name,
     raidNightId: r.softresSheet.raidNight.id,
     raidNightTitle: r.softresSheet.raidNight.title,
     suggestion:

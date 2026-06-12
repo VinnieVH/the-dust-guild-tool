@@ -1,4 +1,3 @@
-import { Instance } from "@/lib/domain/enums";
 import type { ReserveOverview } from "@/lib/services/reserve-overview-service";
 
 const Cell = ({ done }: { done: boolean }) =>
@@ -12,21 +11,20 @@ const Cell = ({ done }: { done: boolean }) =>
     </span>
   );
 
-// The SR matrix: one row per confirmed signup, a column per linked instance.
+// The SR matrix: one row per confirmed signup, one column per linked sheet.
 export function SrMatrix({ overview }: { overview: ReserveOverview }) {
-  const { rows, linkedInstances } = overview;
+  const { rows, sheets } = overview;
 
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="text-left text-fel-200">
           <th className="py-1">Member</th>
-          {linkedInstances.includes(Instance.SSC) && (
-            <th className="py-1 text-center">SSC</th>
-          )}
-          {linkedInstances.includes(Instance.TK) && (
-            <th className="py-1 text-center">TK</th>
-          )}
+          {sheets.map((s) => (
+            <th key={s.sheetId} className="px-2 py-1 text-center">
+              {s.name}
+            </th>
+          ))}
         </tr>
       </thead>
       <tbody>
@@ -40,16 +38,11 @@ export function SrMatrix({ overview }: { overview: ReserveOverview }) {
                 </span>
               )}
             </td>
-            {linkedInstances.includes(Instance.SSC) && (
-              <td className="py-1 text-center">
-                <Cell done={row.ssc} />
+            {sheets.map((s) => (
+              <td key={s.sheetId} className="px-2 py-1 text-center">
+                <Cell done={row.done[s.sheetId]} />
               </td>
-            )}
-            {linkedInstances.includes(Instance.TK) && (
-              <td className="py-1 text-center">
-                <Cell done={row.tk} />
-              </td>
-            )}
+            ))}
           </tr>
         ))}
       </tbody>

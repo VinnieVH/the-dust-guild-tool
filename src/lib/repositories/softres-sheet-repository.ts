@@ -1,72 +1,80 @@
-import type { Instance } from "@/lib/domain/enums";
 import { db } from "@/lib/db";
 
 export interface SoftresSheetRecord {
   id: string;
   raidNightId: string;
-  instance: Instance;
+  name: string;
   softresId: string;
   token: string | null;
 }
 
-// Thin Prisma wrapper for SoftresSheet. One sheet per (raidNight, instance);
-// re-linking an instance with a different softres id replaces the sheet and
-// explicitly deletes the now-orphaned reservations (implementation-plan §3.3).
+// Thin Prisma wrapper for SoftresSheet. A night has 0..N officer-named sheets;
+// names are unique per night. Sheets are added/edited/removed individually
+// (keyed by id), not upserted by a fixed instance.
 export const softresSheetRepository = {
   async listForRaidNight(raidNightId: string): Promise<SoftresSheetRecord[]> {
-    const rows = await db.softresSheet.findMany({
+    return db.softresSheet.findMany({
       where: { raidNightId },
-      orderBy: { instance: "asc" },
+      orderBy: { name: "asc" },
       select: {
         id: true,
         raidNightId: true,
-        instance: true,
+        name: true,
         softresId: true,
         token: true,
       },
     });
-    return rows.map((r) => ({ ...r, instance: r.instance as Instance }));
   },
 
-  // Upsert by (raidNightId, instance). When the softres id changes, the old
-  // sheet's reservations are orphaned — delete them explicitly (logged) so the
-  // unmatched queue and SR matrix never show stale reservations.
-  async linkSheet(input: {
+  // Add a new sheet. Throws on the (raidNightId, name) unique violation — the
+  // caller translates that to a "name already used" message.
+  async addSheet(input: {
     raidNightId: string;
-    instance: Instance;
+    name: string;
     softresId: string;
     token?: string | null;
-  }): Promise<{ id: string; replaced: boolean }> {
-    const { raidNightId, instance, softresId, token = null } = input;
-    const existing = await db.softresSheet.findUnique({
-      where: { raidNightId_instance: { raidNightId, instance } },
-      select: { id: true, softresId: true },
+  }): Promise<{ id: string }> {
+    const { raidNightId, name, softresId, token = null } = input;
+    const created = await db.softresSheet.create({
+      data: { raidNightId, name, softresId, token },
+      select: { id: true },
     });
+    return { id: created.id };
+  },
 
-    if (!existing) {
-      const created = await db.softresSheet.create({
-        data: { raidNightId, instance, softresId, token },
-        select: { id: true },
-      });
-      return { id: created.id, replaced: false };
-    }
+  // Edit an existing sheet's name / link. When the softres id changes, the old
+  // reservations are orphaned — delete them explicitly (logged) so the queue and
+  // matrix never show stale rows from the previous sheet.
+  async updateSheet(
+    id: string,
+    input: { name: string; softresId: string; token?: string | null },
+  ): Promise<void> {
+    const { name, softresId, token = null } = input;
+    const existing = await db.softresSheet.findUnique({
+      where: { id },
+      select: { softresId: true, raidNightId: true },
+    });
+    if (!existing) return;
 
-    const idChanged = existing.softresId !== softresId;
-    if (idChanged) {
+    if (existing.softresId !== softresId) {
       const { count } = await db.reservation.deleteMany({
-        where: { softresSheetId: existing.id },
+        where: { softresSheetId: id },
       });
       if (count > 0) {
         console.warn(
-          `[softres] re-linked ${instance} for night ${raidNightId}: ` +
-            `softres id ${existing.softresId} -> ${softresId}, deleted ${count} orphaned reservations`,
+          `[softres] sheet ${id} (night ${existing.raidNightId}) re-pointed ` +
+            `${existing.softresId} -> ${softresId}; deleted ${count} orphaned reservations`,
         );
       }
     }
     await db.softresSheet.update({
-      where: { id: existing.id },
-      data: { softresId, token },
+      where: { id },
+      data: { name, softresId, token },
     });
-    return { id: existing.id, replaced: idChanged };
+  },
+
+  // Remove a sheet and its reservations (FK cascade handles the children).
+  async removeSheet(id: string): Promise<void> {
+    await db.softresSheet.delete({ where: { id } });
   },
 };

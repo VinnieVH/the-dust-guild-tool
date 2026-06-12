@@ -2,77 +2,101 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Instance } from "@/lib/domain/enums";
+import { Role } from "@/lib/domain/enums";
 import { IntegrationError } from "@/lib/integrations/errors";
 import { SoftresAdapter, parseSoftresUrl } from "@/lib/integrations/softres/adapter";
 import { reservationRepository } from "@/lib/repositories/reservation-repository";
 import { softresSheetRepository } from "@/lib/repositories/softres-sheet-repository";
 import { syncSoftres } from "@/lib/services/sync-softres-service";
+import { auth } from "@/lib/auth";
 
-export type LinkSheetsState = { error?: string; success?: string };
+export type SheetActionState = { error?: string; success?: string };
 
-const urlSchema = z.object({
+async function requireOfficer(): Promise<boolean> {
+  const session = await auth();
+  return session?.user?.role === Role.OFFICER;
+}
+
+function revalidate(raidNightId: string) {
+  revalidatePath(`/admin/raid-nights/${raidNightId}`);
+  revalidatePath("/admin/unmatched");
+  revalidatePath(`/raids/${raidNightId}`);
+}
+
+const addSchema = z.object({
   raidNightId: z.string().min(1),
-  ssc: z.string().trim(),
-  tk: z.string().trim(),
+  name: z.string().trim().min(1).max(40),
+  url: z.string().trim().min(1),
 });
 
-// Link the SSC + TK softres sheets for a raid night, then sync them immediately
-// so the officer sees reservations without waiting for the cron. Either field
-// may be left blank (only one instance linked).
-export async function linkSheetsAction(
-  _prev: LinkSheetsState,
+// Add one named soft-res sheet to a raid night, then sync it immediately so the
+// officer sees reservations without waiting for the cron.
+export async function addSheetAction(
+  _prev: SheetActionState,
   formData: FormData,
-): Promise<LinkSheetsState> {
-  const parsed = urlSchema.safeParse({
+): Promise<SheetActionState> {
+  if (!(await requireOfficer())) return { error: "Officers only." };
+
+  const parsed = addSchema.safeParse({
     raidNightId: formData.get("raidNightId"),
-    ssc: formData.get("ssc") ?? "",
-    tk: formData.get("tk") ?? "",
+    name: formData.get("name"),
+    url: formData.get("url"),
   });
-  if (!parsed.success) return { error: "Invalid input." };
-  const { raidNightId, ssc, tk } = parsed.data;
+  if (!parsed.success) return { error: "Give the sheet a name and a softres link." };
+  const { raidNightId, name, url } = parsed.data;
 
-  const inputs: { instance: Instance; raw: string }[] = [
-    { instance: Instance.SSC, raw: ssc },
-    { instance: Instance.TK, raw: tk },
-  ];
+  const parsedUrl = parseSoftresUrl(url);
+  if (!parsedUrl) return { error: "Could not read a softres id from that link." };
 
-  const linked: { sheetId: string; softresId: string; instance: Instance }[] = [];
-  for (const { instance, raw } of inputs) {
-    if (!raw) continue;
-    const parsedUrl = parseSoftresUrl(raw);
-    if (!parsedUrl) return { error: `Could not read a softres id from the ${instance} link.` };
-    const { id } = await softresSheetRepository.linkSheet({
-      raidNightId,
-      instance,
-      softresId: parsedUrl.softresId,
-    });
-    linked.push({ sheetId: id, softresId: parsedUrl.softresId, instance });
-  }
-
-  if (linked.length === 0) {
-    return { error: "Paste at least one softres link." };
-  }
-
-  // Immediate sync of the just-linked sheets.
+  let sheetId: string;
   try {
-    const result = await syncSoftres(
-      new SoftresAdapter(),
-      reservationRepository,
-      linked.map((l) => ({ sheetId: l.sheetId, softresId: l.softresId })),
-    );
-    revalidatePath(`/admin/raid-nights/${raidNightId}`);
-    revalidatePath("/admin/unmatched");
-    revalidatePath(`/raids/${raidNightId}`);
+    ({ id: sheetId } = await softresSheetRepository.addSheet({
+      raidNightId,
+      name,
+      softresId: parsedUrl.softresId,
+    }));
+  } catch {
+    return { error: `A sheet named “${name}” already exists for this night.` };
+  }
+
+  try {
+    const result = await syncSoftres(new SoftresAdapter(), reservationRepository, [
+      { sheetId, softresId: parsedUrl.softresId },
+    ]);
+    revalidate(raidNightId);
     return {
       success:
-        `Linked ${linked.map((l) => l.instance).join(" + ")}. ` +
-        `Synced ${result.reservations} reservations ` +
+        `Added “${name}”. Synced ${result.reservations} reservations ` +
         `(${result.matched} matched, ${result.suggested} suggested, ${result.unmatched} unmatched).`,
     };
   } catch (err) {
     const message = err instanceof IntegrationError ? err.message : "Sheet sync failed";
-    console.error("[admin/link-sheets]", err);
-    return { error: message };
+    console.error("[admin/add-sheet]", err);
+    // The sheet was created; surface the sync failure but don't roll it back —
+    // a later "Sync now" / cron retries it.
+    return { error: `Added “${name}”, but the sync failed: ${message}` };
   }
+}
+
+const removeSchema = z.object({
+  raidNightId: z.string().min(1),
+  sheetId: z.string().min(1),
+});
+
+// Remove a sheet (and its reservations, via cascade).
+export async function removeSheetAction(
+  _prev: SheetActionState,
+  formData: FormData,
+): Promise<SheetActionState> {
+  if (!(await requireOfficer())) return { error: "Officers only." };
+
+  const parsed = removeSchema.safeParse({
+    raidNightId: formData.get("raidNightId"),
+    sheetId: formData.get("sheetId"),
+  });
+  if (!parsed.success) return { error: "Invalid input." };
+
+  await softresSheetRepository.removeSheet(parsed.data.sheetId);
+  revalidate(parsed.data.raidNightId);
+  return { success: "Sheet removed." };
 }

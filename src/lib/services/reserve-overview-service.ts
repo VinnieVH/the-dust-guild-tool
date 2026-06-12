@@ -1,29 +1,31 @@
-import { Instance } from "@/lib/domain/enums";
-
-// One row of the SR matrix: a confirmed signup and whether they've reserved on
-// each instance's sheet. "Done" for an instance = ANY reservation on that
-// instance's sheet resolves to ANY character this member owns (covers alts).
+// One row of the SR matrix: a confirmed signup and, per linked sheet, whether
+// they've reserved on it. "Done" for a sheet = ANY reservation on that sheet
+// resolves to ANY character this member owns (covers alts). Keyed by sheetId
+// (names are editable/collidable — never key on the display name).
 export interface OverviewRow {
   discordId: string;
   /** Claimed character name if any, else the Discord display name. */
   displayName: string;
   /** No character claimed -> can never be matched; UI hints at this. */
   hasCharacter: boolean;
-  ssc: boolean;
-  tk: boolean;
+  /** Done flag per linked sheet, same order/length as overview.sheets. */
+  done: Record<string, boolean>; // sheetId -> done
+}
+
+export interface SheetColumn {
+  sheetId: string;
+  name: string;
 }
 
 export interface ReserveOverview {
   rows: OverviewRow[];
-  /** Sheets actually linked for this night — columns the UI should show. */
-  linkedInstances: Instance[];
-  /** Completion across linked sheets: a member counts as complete when they've
-   *  done every LINKED instance. */
+  /** Sheets linked for this night — the matrix columns, in display order. */
+  sheets: SheetColumn[];
+  /** Members who've done EVERY linked sheet. */
   completed: number;
   total: number;
-  /** Per-instance completion (only for linked instances) so the UI can show one
-   *  progress bar per sheet — e.g. SSC 0/18, TK 1/18 side by side. */
-  perInstance: { instance: Instance; done: number; total: number }[];
+  /** Per-sheet completion so the UI can show progress per sheet. */
+  perSheet: { sheetId: string; name: string; done: number; total: number }[];
 }
 
 // Input the overview is built from — supplied by a query port (no Prisma here).
@@ -35,72 +37,77 @@ export interface OverviewData {
     /** Character ids this member owns (across alts). Empty if none claimed. */
     characterIds: string[];
   }[];
-  /** Which instances have a linked sheet. */
-  linkedInstances: Instance[];
-  /** Matched reservations: which characterId reserved on which instance. */
-  reservations: { instance: Instance; characterId: string }[];
+  /** Sheets linked for this night (the matrix columns). */
+  sheets: SheetColumn[];
+  /** Matched reservations: which characterId reserved on which sheet. */
+  reservations: { sheetId: string; characterId: string }[];
 }
 
 // Pure: turn signups + linked sheets + matched reservations into the matrix.
 // Idempotent and side-effect-free — fully unit-testable.
 export function buildOverview(data: OverviewData): ReserveOverview {
-  // instance -> set of characterIds that reserved on it.
-  const reservedBy = new Map<Instance, Set<string>>();
+  // sheetId -> set of characterIds that reserved on it.
+  const reservedBy = new Map<string, Set<string>>();
   for (const r of data.reservations) {
-    if (!reservedBy.has(r.instance)) reservedBy.set(r.instance, new Set());
-    reservedBy.get(r.instance)!.add(r.characterId);
+    if (!reservedBy.has(r.sheetId)) reservedBy.set(r.sheetId, new Set());
+    reservedBy.get(r.sheetId)!.add(r.characterId);
   }
 
-  const linked = new Set(data.linkedInstances);
-  const done = (instance: Instance, owned: string[]): boolean => {
-    if (!linked.has(instance)) return false;
-    const reserved = reservedBy.get(instance);
+  const sheetIds = data.sheets.map((s) => s.sheetId);
+  const isDone = (sheetId: string, owned: string[]): boolean => {
+    const reserved = reservedBy.get(sheetId);
     if (!reserved) return false;
     return owned.some((id) => reserved.has(id));
   };
 
-  const rows: OverviewRow[] = data.members.map((m) => ({
-    discordId: m.discordId,
-    displayName: m.displayName,
-    hasCharacter: m.characterIds.length > 0,
-    ssc: done(Instance.SSC, m.characterIds),
-    tk: done(Instance.TK, m.characterIds),
-  }));
+  const rows: OverviewRow[] = data.members.map((m) => {
+    const done: Record<string, boolean> = {};
+    for (const id of sheetIds) done[id] = isDone(id, m.characterIds);
+    return {
+      discordId: m.discordId,
+      displayName: m.displayName,
+      hasCharacter: m.characterIds.length > 0,
+      done,
+    };
+  });
 
-  // A member is complete when they've done every LINKED instance.
+  // A member is complete when they've done every linked sheet. With zero sheets
+  // there's nothing to complete — treat as not-complete so completed stays 0
+  // (the UI hides the block entirely in that case).
   const isComplete = (row: OverviewRow): boolean =>
-    data.linkedInstances.every((i) => (i === Instance.SSC ? row.ssc : row.tk));
+    sheetIds.length > 0 && sheetIds.every((id) => row.done[id]);
 
-  const perInstance = data.linkedInstances.map((instance) => ({
-    instance,
-    done: rows.filter((r) => (instance === Instance.SSC ? r.ssc : r.tk)).length,
+  const perSheet = data.sheets.map((s) => ({
+    sheetId: s.sheetId,
+    name: s.name,
+    done: rows.filter((r) => r.done[s.sheetId]).length,
     total: rows.length,
   }));
 
   return {
     rows,
-    linkedInstances: data.linkedInstances,
+    sheets: data.sheets,
     completed: rows.filter(isComplete).length,
     total: rows.length,
-    perInstance,
+    perSheet,
   };
 }
 
-// The poke list: members missing ≥1 linked sheet, with which they're missing.
-// Drives the "Copy Discord reminder" button (<@discordId> mentions).
+// The poke list: members missing ≥1 linked sheet, with which they're missing
+// (by sheet name). Drives the "Copy Discord reminder" button.
 export interface PokeEntry {
   discordId: string;
   displayName: string;
-  missing: Instance[];
+  missing: string[]; // sheet names
   hasCharacter: boolean;
 }
 
 export function buildPokeList(overview: ReserveOverview): PokeEntry[] {
   return overview.rows
     .map((row) => {
-      const missing = overview.linkedInstances.filter((i) =>
-        i === Instance.SSC ? !row.ssc : !row.tk,
-      );
+      const missing = overview.sheets
+        .filter((s) => !row.done[s.sheetId])
+        .map((s) => s.name);
       return {
         discordId: row.discordId,
         displayName: row.displayName,

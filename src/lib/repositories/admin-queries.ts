@@ -1,4 +1,3 @@
-import type { Instance } from "@/lib/domain/enums";
 import { db } from "@/lib/db";
 
 // Read-side view models for the officer admin pages.
@@ -10,11 +9,17 @@ export interface AdminRaidNightListItem {
   sheetCount: number;
 }
 
+export interface AdminSheet {
+  id: string;
+  name: string;
+  softresId: string;
+}
+
 export interface AdminRaidNightDetail {
   id: string;
   title: string;
   date: Date;
-  sheets: { instance: Instance; softresId: string }[];
+  sheets: AdminSheet[];
 }
 
 // Recent + upcoming nights, split into upcoming (soonest first) and past
@@ -59,8 +64,8 @@ export async function getRaidNightForAdmin(
       title: true,
       date: true,
       sheets: {
-        orderBy: { instance: "asc" },
-        select: { instance: true, softresId: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, softresId: true },
       },
     },
   });
@@ -70,7 +75,8 @@ export async function getRaidNightForAdmin(
     title: night.title,
     date: night.date,
     sheets: night.sheets.map((s) => ({
-      instance: s.instance as Instance,
+      id: s.id,
+      name: s.name,
       softresId: s.softresId,
     })),
   };

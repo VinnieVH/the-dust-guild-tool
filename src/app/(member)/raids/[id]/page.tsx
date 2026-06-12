@@ -134,7 +134,7 @@ export default async function RaidNightPage({
         </section>
       )}
 
-      {overview.linkedInstances.length > 0 && (
+      {overview.sheets.length > 0 && (
         <Card className="mt-6">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-semibold text-fel-300">Soft-res completion</h2>

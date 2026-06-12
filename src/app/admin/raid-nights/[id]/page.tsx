@@ -2,17 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
-import { Instance } from "@/lib/domain/enums";
 import { getRaidNightForAdmin } from "@/lib/repositories/admin-queries";
-import { LinkSheetsForm } from "./link-sheets-form";
+import { SheetManager } from "./sheet-manager";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
   day: "numeric",
   month: "long",
 });
-
-const softresUrl = (id: string) => `https://softres.it/raid/${id}`;
 
 export default async function AdminRaidNightDetailPage({
   params,
@@ -23,10 +20,6 @@ export default async function AdminRaidNightDetailPage({
   const night = await getRaidNightForAdmin(id);
   if (!night) notFound();
 
-  const sheetById = new Map(night.sheets.map((s) => [s.instance, s.softresId]));
-  const ssc = sheetById.get(Instance.SSC) ?? "";
-  const tk = sheetById.get(Instance.TK) ?? "";
-
   return (
     <PageContainer>
       <header className="mb-6">
@@ -35,17 +28,13 @@ export default async function AdminRaidNightDetailPage({
       </header>
 
       <Card>
-        <h2 className="mb-3 font-semibold text-fel-300">Soft-res sheets</h2>
+        <h2 className="mb-1 font-semibold text-fel-300">Soft-res sheets</h2>
         <p className="mb-4 text-sm text-fel-200">
-          Paste the softres links for this night. Pasting a new link for an
-          instance replaces the old sheet (and its reservations). Linking syncs
-          immediately.
+          Add one or more named softres sheets (e.g. “SSC”, “TK”, “Kara”). Each
+          becomes a column in the raid&apos;s SR matrix. Adding syncs it
+          immediately; removing deletes its reservations.
         </p>
-        <LinkSheetsForm
-          raidNightId={night.id}
-          sscDefault={ssc ? softresUrl(ssc) : ""}
-          tkDefault={tk ? softresUrl(tk) : ""}
-        />
+        <SheetManager raidNightId={night.id} sheets={night.sheets} />
       </Card>
 
       <div className="mt-6 flex gap-4 text-sm">

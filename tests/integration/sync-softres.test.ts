@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ExternalReservation } from "@/lib/domain/external";
-import { Instance, MainRole } from "@/lib/domain/enums";
+import { MainRole } from "@/lib/domain/enums";
 import type { IReserveSource } from "@/lib/integrations/interfaces";
 import { listUnmatchedReservations } from "@/lib/repositories/reservation-queries";
 import {
@@ -53,7 +53,7 @@ async function seed() {
     data: { raidNightId: night.id, userId: user.id, status: "CONFIRMED", specSignedAs: "Arms", role: MainRole.DPS, characterName: CHAR_NAME, class: "Warrior" },
   });
   const sheet = await db.softresSheet.create({
-    data: { raidNightId: night.id, instance: Instance.SSC, softresId: `${PFX}softres` },
+    data: { raidNightId: night.id, name: "SSC", softresId: `${PFX}softres` },
   });
   return { userId: user.id, characterId: character.id, nightId: night.id, sheetId: sheet.id };
 }
@@ -72,7 +72,7 @@ async function seedNoCharacter() {
     data: { raidNightId: night.id, userId: user.id, status: "CONFIRMED", specSignedAs: "Arms", role: MainRole.DPS, characterName: CHAR_NAME, class: "Warrior" },
   });
   const sheet = await db.softresSheet.create({
-    data: { raidNightId: night.id, instance: Instance.SSC, softresId: `${PFX}softres` },
+    data: { raidNightId: night.id, name: "SSC", softresId: `${PFX}softres` },
   });
   return { userId: user.id, nightId: night.id, sheetId: sheet.id };
 }
@@ -106,8 +106,10 @@ describe("syncSoftres -> SR matrix (live DB)", () => {
     expect(row?.discordId).toBe(DISCORD_ID);
 
     const overview = buildOverview(await getOverviewData(nightId));
-    expect(overview).toMatchObject({ completed: 1, total: 1, linkedInstances: [Instance.SSC] });
-    expect(overview.rows[0]).toMatchObject({ ssc: true, hasCharacter: true });
+    expect(overview).toMatchObject({ completed: 1, total: 1 });
+    expect(overview.sheets).toEqual([{ sheetId, name: "SSC" }]);
+    expect(overview.rows[0].done[sheetId]).toBe(true);
+    expect(overview.rows[0].hasCharacter).toBe(true);
     expect(buildPokeList(overview)).toHaveLength(0);
   });
 
@@ -129,7 +131,7 @@ describe("syncSoftres -> SR matrix (live DB)", () => {
 
     // Alias persisted -> matrix is now green and the queue is empty.
     const overview = buildOverview(await getOverviewData(nightId));
-    expect(overview.rows[0].ssc).toBe(true);
+    expect(overview.rows[0].done[sheetId]).toBe(true);
     expect((await listUnmatchedReservations()).filter((r) => r.raidNightId === nightId)).toHaveLength(0);
 
     // Re-sync: the alias makes it match by name with no new queue entry.
@@ -153,7 +155,8 @@ describe("officer create-from-reservation -> SR matrix credit (live DB)", () => 
 
     // Pre-fix sanity: the member shows up with no character claimed.
     const before = buildOverview(await getOverviewData(nightId));
-    expect(before.rows[0]).toMatchObject({ hasCharacter: false, ssc: false });
+    expect(before.rows[0].hasCharacter).toBe(false);
+    expect(before.rows[0].done[sheetId]).toBe(false);
 
     // Officer creates the character from the reservation.
     const queue = (await listUnmatchedReservations()).filter((r) => r.raidNightId === nightId);
@@ -172,7 +175,8 @@ describe("officer create-from-reservation -> SR matrix credit (live DB)", () => 
 
     // ...so the matrix now credits the member (this is what was broken).
     const after = buildOverview(await getOverviewData(nightId));
-    expect(after.rows[0]).toMatchObject({ hasCharacter: true, ssc: true });
+    expect(after.rows[0].hasCharacter).toBe(true);
+    expect(after.rows[0].done[sheetId]).toBe(true);
     expect(after).toMatchObject({ completed: 1, total: 1 });
   });
 });

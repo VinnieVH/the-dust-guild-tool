@@ -48,7 +48,7 @@ export function UnmatchedRow({
           <span className="font-medium text-fel-100">{r.rawName}</span>
           {r.rawClass && <span className="text-fel-200"> · {r.rawClass}</span>}
           <span className="ml-2 text-xs text-fel-200">
-            {r.raidNightTitle} · {r.instance}
+            {r.raidNightTitle} · {r.sheetName}
             {r.discordId && ` · reserved by <@${r.discordId}>`}
           </span>
         </div>
