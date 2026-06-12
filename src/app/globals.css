@@ -58,3 +58,59 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/*
+ * Atmospheric fel backdrop — layered radial fel glow + a faint obsidian grid.
+ * Decorative only (sits behind content); accent-saturated fel is fine here as
+ * it never carries text. Used by the home hero and other ambient surfaces.
+ */
+.fel-atmosphere {
+  background-color: var(--color-legion-950);
+  background-image:
+    radial-gradient(
+      70% 60% at 50% -10%,
+      color-mix(in srgb, var(--color-fel-glow) 24%, transparent) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      45% 55% at 88% 20%,
+      color-mix(in srgb, var(--color-void-violet) 40%, transparent) 0%,
+      transparent 70%
+    ),
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-fel-600) 12%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-fel-600) 12%, transparent) 1px,
+      transparent 1px
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    46px 46px,
+    46px 46px;
+}
+
+/* Animated text shimmer for the hero wordmark; falls still for reduced motion. */
+@keyframes fel-pulse {
+  0%,
+  100% {
+    text-shadow: 0 0 18px color-mix(in srgb, var(--color-fel-glow) 45%, transparent);
+  }
+  50% {
+    text-shadow: 0 0 30px color-mix(in srgb, var(--color-fel-glow) 70%, transparent);
+  }
+}
+
+.fel-glow-text {
+  text-shadow: 0 0 18px color-mix(in srgb, var(--color-fel-glow) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fel-glow-text {
+    animation: fel-pulse 4s ease-in-out infinite;
+  }
+}

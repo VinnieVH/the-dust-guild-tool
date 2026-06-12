@@ -14,9 +14,17 @@ export async function SiteHeader() {
     "rounded border border-fel-800 px-3 py-1 text-fel-200 transition-colors hover:border-fel-500 hover:text-fel-400 hover:shadow-[0_0_10px_-2px_var(--color-fel-glow)]";
 
   return (
-    <header className="flex items-center justify-between border-b border-legion-700 px-6 py-3">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-legion-700 bg-legion-900/80 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-legion-900/60">
       <nav className="flex items-center gap-4 text-sm">
-        <Link href="/" className="font-semibold text-fel-300 hover:text-fel-400">
+        <Link
+          href="/"
+          className="group flex items-center gap-2 font-semibold text-fel-300 hover:text-fel-400"
+        >
+          <span className="grid h-6 w-6 place-items-center rounded-md border border-fel-700 text-fel-400 shadow-[0_0_10px_-3px_var(--color-fel-glow)] transition-shadow group-hover:shadow-[0_0_14px_-2px_var(--color-fel-glow)]">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
+              <path d="M12 2 4 7v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V7l-8-5Z" />
+            </svg>
+          </span>
           The Dust
         </Link>
         {user && (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageContainer } from "@/components/ui/page-container";
 import { listUpcomingRaidNights } from "@/lib/repositories/raid-queries";
 
@@ -20,11 +21,18 @@ export default async function RaidsPage() {
       <h1 className="mb-4 text-xl font-semibold text-fel-300">Upcoming raids</h1>
 
       {nights.length === 0 ? (
-        <Card>
-          <p className="text-fel-200">
-            No upcoming raid nights. Run a Raid-Helper sync to populate them.
-          </p>
-        </Card>
+        <EmptyState
+          title="No upcoming raids"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} aria-hidden>
+              <rect x="3" y="4" width="18" height="17" rx="2" />
+              <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
+            </svg>
+          }
+        >
+          Nothing scheduled yet. Run a Raid-Helper sync to pull in upcoming
+          nights.
+        </EmptyState>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {nights.map((n) => (

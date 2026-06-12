@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ClassName } from "@/components/ui/class-name";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WOW_CLASSES } from "@/lib/domain/wow";
@@ -94,6 +95,22 @@ export default function StyleguidePage() {
             Hover me
           </span>
         </Tooltip>
+      </section>
+
+      <section className="flex max-w-xl flex-col gap-3">
+        <h2 className="text-lg font-semibold">Empty state</h2>
+        <EmptyState
+          title="Nothing here yet"
+          icon={
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M9 10h.01M15 10h.01M9 15c.8-.8 2-1.2 3-1.2s2.2.4 3 1.2" strokeLinecap="round" />
+            </svg>
+          }
+        >
+          Placeholder for empty lists and not-yet-built pages — dashed fel
+          border, ringed icon, supporting copy.
+        </EmptyState>
       </section>
     </div>
   );
