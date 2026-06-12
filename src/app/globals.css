@@ -117,17 +117,33 @@ body {
 
 /*
  * Side-gutter scenery — fills the empty obsidian beside the centered content
- * column on wide screens. Reuses the `.fel-atmosphere` language (fel glow,
- * void-violet, obsidian grid) so it reads as the same atmosphere bleeding in
- * from the edge, not a new motif. Decorative only: low opacity, fades to nothing
- * toward the content so it never competes for attention. One class, mirrored per
- * side via `.fel-gutter--left/right`. Visibility is gated to wide viewports in
- * the markup (the gutters only exist past the content max-width).
+ * column on wide screens. Decorative only; fades inward so it never competes
+ * with the content. Mirrored per side via `.fel-gutter--right`. Visibility is
+ * gated to wide viewports in the markup (the gutters only exist past the content
+ * max-width).
+ *
+ * DROP-IN ART: put a tall/portrait image at `public/gutter.jpg` and it appears
+ * in BOTH gutters automatically — darkened and faded toward the content so it
+ * stays ambient. No code change needed. While that file is absent, the URL
+ * simply resolves to nothing and the fel-atmosphere fallback below shows through
+ * (CSS background-image ignores a missing url, so there's no broken-image flash).
+ * Want two DIFFERENT side images? Give the right panel its own rule pointing at
+ * a second file instead of the mirror — see `.fel-gutter--right`.
  */
 .fel-gutter {
   background-color: var(--color-legion-950);
   background-image:
-    /* a faint fel column hugging the outer edge — the only real accent */
+    /* darkening veil — keeps any real image dim/ambient, not attention-grabbing */
+    linear-gradient(
+      to bottom,
+      rgba(5, 6, 5, 0.72),
+      rgba(5, 6, 5, 0.72)
+    ),
+    /* the drop-in scenery (absent until you add the file) — one tall image,
+       cropped to fill, anchored to the outer edge */
+    url("/gutter.jpg"),
+    /* --- fallback fel atmosphere (shown when no image is present) --- */
+    /* a faint fel column hugging the outer edge */
     radial-gradient(
       55% 55% at 0% 35%,
       color-mix(in srgb, var(--color-fel-glow) 6%, transparent) 0%,
@@ -146,10 +162,19 @@ body {
     );
   background-size:
     100% 100%,
+    cover,
+    100% 100%,
     46px 46px,
     46px 46px;
+  background-position:
+    center,
+    left center,
+    center,
+    center,
+    center;
+  background-repeat: no-repeat;
   /* Fade the panel out well before the content column so only the outer edge
-     carries any glow — keeps attention firmly on the center. */
+     carries any glow/art — keeps attention firmly on the center. */
   -webkit-mask-image: linear-gradient(to right, black 0%, transparent 62%);
   mask-image: linear-gradient(to right, black 0%, transparent 62%);
 }
