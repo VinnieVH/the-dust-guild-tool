@@ -1,3 +1,4 @@
+import { ClassName } from "@/components/ui/class-name";
 import type { ReserveOverview } from "@/lib/services/reserve-overview-service";
 
 const Cell = ({ done }: { done: boolean }) =>
@@ -31,7 +32,11 @@ export function SrMatrix({ overview }: { overview: ReserveOverview }) {
         {rows.map((row) => (
           <tr key={row.discordId} className="border-t border-fel-900/40">
             <td className="py-1">
-              <span className="text-fel-100">{row.displayName}</span>
+              {row.displayClass ? (
+                <ClassName name={row.displayName} wowClass={row.displayClass} />
+              ) : (
+                <span className="text-fel-100">{row.displayName}</span>
+              )}
               {!row.hasCharacter && (
                 <span className="ml-2 text-xs text-red-400">
                   no character claimed

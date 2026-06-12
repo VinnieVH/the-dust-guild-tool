@@ -27,6 +27,19 @@ describe("buildOverview", () => {
     expect(o).toMatchObject({ completed: 1, total: 1 });
   });
 
+  it("carries the member's class through for class-colored names", () => {
+    const o = buildOverview({
+      members: [
+        { discordId: "d1", displayName: "Skreamo", displayClass: "Warrior", characterIds: ["c1"] },
+        { discordId: "d2", displayName: "Nochar", characterIds: [] },
+      ],
+      sheets: [SSC],
+      reservations: [],
+    });
+    expect(o.rows[0].displayClass).toBe("Warrior");
+    expect(o.rows[1].displayClass).toBeNull(); // no character -> default color
+  });
+
   it("marks done on one, missing on the other", () => {
     const o = buildOverview({
       members: [{ discordId: "d1", displayName: "Skreamo", characterIds: ["c1"] }],

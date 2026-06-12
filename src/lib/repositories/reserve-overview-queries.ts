@@ -21,7 +21,7 @@ export async function getOverviewData(
               discordId: true,
               discordName: true,
               characters: {
-                select: { id: true, name: true },
+                select: { id: true, name: true, class: true },
                 orderBy: { name: "asc" },
               },
             },
@@ -49,6 +49,7 @@ export async function getOverviewData(
   const members = night.signups.map((s) => ({
     discordId: s.user.discordId,
     displayName: s.user.characters[0]?.name ?? s.user.discordName,
+    displayClass: s.user.characters[0]?.class ?? null,
     characterIds: s.user.characters.map((c) => c.id),
   }));
 

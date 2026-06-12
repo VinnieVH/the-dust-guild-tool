@@ -6,6 +6,9 @@ export interface OverviewRow {
   discordId: string;
   /** Claimed character name if any, else the Discord display name. */
   displayName: string;
+  /** WoW class of the displayed character, for class coloring. Null when the
+   *  member has no claimed character (displayName is then the Discord name). */
+  displayClass: string | null;
   /** No character claimed -> can never be matched; UI hints at this. */
   hasCharacter: boolean;
   /** Done flag per linked sheet, same order/length as overview.sheets. */
@@ -34,6 +37,8 @@ export interface OverviewData {
   members: {
     discordId: string;
     displayName: string;
+    /** WoW class of the displayed character (null/omitted if none claimed). */
+    displayClass?: string | null;
     /** Character ids this member owns (across alts). Empty if none claimed. */
     characterIds: string[];
   }[];
@@ -66,6 +71,7 @@ export function buildOverview(data: OverviewData): ReserveOverview {
     return {
       discordId: m.discordId,
       displayName: m.displayName,
+      displayClass: m.displayClass ?? null,
       hasCharacter: m.characterIds.length > 0,
       done,
     };
