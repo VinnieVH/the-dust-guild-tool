@@ -1,4 +1,4 @@
-import type { Instance, MainRole } from "@/lib/domain/enums";
+import type { MainRole } from "@/lib/domain/enums";
 
 // Domain-level DTOs returned by integration adapters. Raw API shapes stay
 // inside each adapter's dto.ts/mapper.ts; everything above the adapter layer
@@ -65,7 +65,9 @@ export interface ExternalPerformance {
 
 export interface ExternalReport {
   reportCode: string;
-  instance: Instance;
+  /** WCL zone name as reported by the API (e.g. "Serpentshrine Cavern",
+   *  "Karazhan"). A free string — the guild raids any TBC instance. */
+  zone: string;
   totalBossFights: number;
   performances: ExternalPerformance[];
 }

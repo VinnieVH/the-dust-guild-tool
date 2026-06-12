@@ -146,10 +146,15 @@ model Reservation {
 }
 
 model WclReport {
-  id           String              @id @default(cuid())
-  raidNightId  String // MANY reports per raid night
-  reportCode   String              @unique
-  instance     Instance
+  id          String @id @default(cuid())
+  raidNightId String // MANY reports per raid night
+  reportCode  String @unique
+  // WCL zone name as reported by the API (e.g. "Serpentshrine Cavern",
+  // "Karazhan", "Gruul's Lair"). A free string, not an enum: the guild raids
+  // any TBC instance, and WCL adds zones over time — a hand-curated enum would
+  // break on the first un-listed zone. Mirrors the softres-sheet-named
+  // deviation (officer-visible label, not a fixed set).
+  zone         String
   raidNight    RaidNight           @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
   performances PlayerPerformance[]
 
@@ -256,11 +261,4 @@ enum MainRole {
   DPS
 
   @@map("main_roles")
-}
-
-enum Instance {
-  SSC
-  TK
-
-  @@map("instances")
 }

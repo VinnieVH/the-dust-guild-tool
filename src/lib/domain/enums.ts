@@ -15,8 +15,7 @@ export const MainRole = {
 } as const;
 export type MainRole = (typeof MainRole)[keyof typeof MainRole];
 
-export const Instance = {
-  SSC: "SSC",
-  TK: "TK",
-} as const;
-export type Instance = (typeof Instance)[keyof typeof Instance];
+// NOTE: the SSC|TK `Instance` enum was removed in the WCL-zone-flexible change
+// (Phase 4). softres sheets are officer-named strings (Step 3.3), and a
+// WclReport now stores the WCL zone *name* as a free string so any TBC
+// instance (Kara, Gruul, Mag, …) ingests cleanly. There is no fixed zone enum.
