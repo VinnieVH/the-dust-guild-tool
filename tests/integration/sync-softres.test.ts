@@ -9,7 +9,10 @@ import {
 } from "@/lib/repositories/reservation-repository";
 import { getOverviewData } from "@/lib/repositories/reserve-overview-queries";
 import { buildOverview, buildPokeList } from "@/lib/services/reserve-overview-service";
-import { linkReservation } from "@/lib/services/resolve-reservation-service";
+import {
+  createAndLinkReservation,
+  linkReservation,
+} from "@/lib/services/resolve-reservation-service";
 import { syncSoftres } from "@/lib/services/sync-softres-service";
 import { db } from "@/lib/db";
 
@@ -53,6 +56,25 @@ async function seed() {
     data: { raidNightId: night.id, instance: Instance.SSC, softresId: `${PFX}softres` },
   });
   return { userId: user.id, characterId: character.id, nightId: night.id, sheetId: sheet.id };
+}
+
+// Seed a confirmed signup whose user owns NO character yet — the real-world
+// state for a player who signed up in Raid-Helper but never logged in. The
+// officer must create + link a character from their reservation.
+async function seedNoCharacter() {
+  const user = await db.user.create({
+    data: { discordId: DISCORD_ID, discordName: `${PFX}user` },
+  });
+  const night = await db.raidNight.create({
+    data: { raidHelperEventId: `${PFX}evt`, title: `${PFX}night`, date: new Date("2026-06-12T18:00:00Z") },
+  });
+  await db.signup.create({
+    data: { raidNightId: night.id, userId: user.id, status: "CONFIRMED", specSignedAs: "Arms", role: MainRole.DPS, characterName: CHAR_NAME, class: "Warrior" },
+  });
+  const sheet = await db.softresSheet.create({
+    data: { raidNightId: night.id, instance: Instance.SSC, softresId: `${PFX}softres` },
+  });
+  return { userId: user.id, nightId: night.id, sheetId: sheet.id };
 }
 
 async function cleanup() {
@@ -114,5 +136,43 @@ describe("syncSoftres -> SR matrix (live DB)", () => {
     const second = await syncSoftres(src, reservationRepository, [{ sheetId, softresId: `${PFX}softres` }]);
     expect(second).toMatchObject({ matched: 1, created: 0 });
     expect((await listUnmatchedReservations()).filter((r) => r.raidNightId === nightId)).toHaveLength(0);
+  });
+});
+
+describe("officer create-from-reservation -> SR matrix credit (live DB)", () => {
+  // Regression guard: a member with no character reserves; officer creates the
+  // character from the queue. The character must be ATTRIBUTED to the reserver
+  // (via dId) so the matrix credits the member — not left unowned (the bug).
+  it("credits the member after the officer creates a character from their reservation", async () => {
+    const { userId, nightId, sheetId } = await seedNoCharacter();
+    const src = new FakeReserveSource([reservation(CHAR_NAME)]);
+
+    // Sync: no character exists, dId owns none -> unmatched, in the queue.
+    const synced = await syncSoftres(src, reservationRepository, [{ sheetId, softresId: `${PFX}softres` }]);
+    expect(synced).toMatchObject({ matched: 0, suggested: 0, unmatched: 1 });
+
+    // Pre-fix sanity: the member shows up with no character claimed.
+    const before = buildOverview(await getOverviewData(nightId));
+    expect(before.rows[0]).toMatchObject({ hasCharacter: false, ssc: false });
+
+    // Officer creates the character from the reservation.
+    const queue = (await listUnmatchedReservations()).filter((r) => r.raidNightId === nightId);
+    expect(queue).toHaveLength(1);
+    const created = await createAndLinkReservation(reservationResolveRepository, queue[0].id, {
+      name: CHAR_NAME,
+      class: "Warrior",
+      spec: "Arms",
+      mainRole: MainRole.DPS,
+    });
+    expect(created.ok).toBe(true);
+
+    // The created character is owned by the reserver's user...
+    const char = await db.character.findUnique({ where: { name: CHAR_NAME }, select: { userId: true } });
+    expect(char?.userId).toBe(userId);
+
+    // ...so the matrix now credits the member (this is what was broken).
+    const after = buildOverview(await getOverviewData(nightId));
+    expect(after.rows[0]).toMatchObject({ hasCharacter: true, ssc: true });
+    expect(after).toMatchObject({ completed: 1, total: 1 });
   });
 });

@@ -96,7 +96,12 @@ export const reservationResolveRepository: ResolveReservationStore = {
   async getReservation(reservationId) {
     return db.reservation.findUnique({
       where: { id: reservationId },
-      select: { rawName: true, characterId: true, suggestedCharacterId: true },
+      select: {
+        rawName: true,
+        characterId: true,
+        suggestedCharacterId: true,
+        discordId: true,
+      },
     });
   },
 
@@ -108,10 +113,33 @@ export const reservationResolveRepository: ResolveReservationStore = {
     return c?.name ?? null;
   },
 
+  async getCharacterOwner(characterId) {
+    const c = await db.character.findUnique({
+      where: { id: characterId },
+      select: { userId: true },
+    });
+    return c?.userId ?? null;
+  },
+
+  async findUserIdByDiscordId(discordId) {
+    const u = await db.user.findUnique({
+      where: { discordId },
+      select: { id: true },
+    });
+    return u?.id ?? null;
+  },
+
   async setReservationCharacter(reservationId, characterId) {
     await db.reservation.update({
       where: { id: reservationId },
       data: { characterId, suggestedCharacterId: null },
+    });
+  },
+
+  async assignOwner(characterId, userId) {
+    await db.character.update({
+      where: { id: characterId },
+      data: { userId },
     });
   },
 
@@ -124,17 +152,17 @@ export const reservationResolveRepository: ResolveReservationStore = {
     });
   },
 
-  async createCharacter(input: ClaimInput) {
-    // Officer-created characters are unowned (userId null) — a real player
-    // claims them later via the normal claim flow. Throws on the @unique name
-    // violation, which the service translates to `name_taken`.
+  async createCharacter(input: ClaimInput, userId) {
+    // Attributed to the reserver (their RH-stubbed user) so the member gets SR
+    // matrix credit; unowned only when no user row exists for the dId. Throws on
+    // the @unique name violation, which the service translates to `name_taken`.
     const created = await db.character.create({
       data: {
         name: input.name,
         class: input.class,
         spec: input.spec,
         mainRole: input.mainRole,
-        userId: null,
+        userId,
       },
       select: { id: true },
     });
