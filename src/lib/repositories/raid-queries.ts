@@ -9,6 +9,9 @@ export interface RaidNightListItem {
   title: string;
   date: Date;
   signupCount: number;
+  confirmedCount: number;
+  tentativeCount: number;
+  roleCounts: Record<MainRole, number>;
 }
 
 export interface RosterEntry {
@@ -38,16 +41,31 @@ export async function listUpcomingRaidNights(): Promise<RaidNightListItem[]> {
       id: true,
       title: true,
       date: true,
-      _count: { select: { signups: true } },
+      signups: { select: { status: true, role: true } },
     },
   });
 
-  return nights.map((n) => ({
-    id: n.id,
-    title: n.title,
-    date: n.date,
-    signupCount: n._count.signups,
-  }));
+  return nights.map((n) => {
+    const roleCounts: Record<MainRole, number> = { TANK: 0, HEALER: 0, DPS: 0 };
+    let confirmedCount = 0;
+    let tentativeCount = 0;
+
+    for (const s of n.signups) {
+      if (s.status === "CONFIRMED") confirmedCount += 1;
+      else if (s.status === "TENTATIVE") tentativeCount += 1;
+      if (s.role) roleCounts[s.role] += 1;
+    }
+
+    return {
+      id: n.id,
+      title: n.title,
+      date: n.date,
+      signupCount: n.signups.length,
+      confirmedCount,
+      tentativeCount,
+      roleCounts,
+    };
+  });
 }
 
 export async function getRaidNightDetail(
