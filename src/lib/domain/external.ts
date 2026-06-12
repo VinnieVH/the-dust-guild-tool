@@ -58,8 +58,16 @@ export interface ExternalPerformance {
   parseAvg: number;
   dpsOrHps: number;
   deaths: number;
+  /** Successful interrupts (counted from interrupt events by source). */
   interrupts: number;
+  /** Dispels performed (counted from dispel events by source). */
   dispels: number;
+  /** Consumable presence (Fully Buffed). True if the player self-applied a
+   *  consumable in that category in any boss fight that night — see
+   *  docs/achievement-design.md "Consumable detection". */
+  hadFlask: boolean;
+  hadFood: boolean;
+  hadElixir: boolean;
   fightsPresent: number;
 }
 
