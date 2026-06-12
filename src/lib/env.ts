@@ -16,7 +16,8 @@ const schema = z.object({
   // --- Optional now; required by the phase noted ---
   OFFICER_DISCORD_IDS: z.string().optional(), // seed (1.3)
   RAID_HELPER_API_KEY: z.string().optional(), // Phase 2
-  RAID_HELPER_SERVER_ID: z.string().optional(), // Phase 2
+  RAID_HELPER_SERVER_ID: z.string().optional(), // Phase 2 — also the guild id for the header identity
+  DISCORD_BOT_TOKEN: z.string().optional(), // header guild name/icon; bot must be in the guild
   WCL_CLIENT_ID: z.string().optional(), // Phase 4
   WCL_CLIENT_SECRET: z.string().optional(), // Phase 4
   CRON_SECRET: z.string().optional(), // Phase 2 (cron guard)
