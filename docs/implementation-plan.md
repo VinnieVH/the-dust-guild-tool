@@ -237,7 +237,8 @@ export interface IPerformanceSource {
 - `/admin/raid-nights/[id]`: a **SheetManager** lists the night's sheets
   (name + softres link + Remove) and an "Add sheet" row (name + URL). Adding
   syncs that sheet immediately; removing deletes it and its reservations
-  (cascade). Editing a sheet's link orphan-deletes the old reservations (logged).
+  (cascade). Re-linking is remove + add — the saved character aliases
+  reconstruct the matches on the next sync, so there's no separate edit path.
   All actions are officer-gated server-side.
 - `/admin/raid-nights`: roomier layout, upcoming/past split, and an
   **Unmatched queue** link with a pending-count badge.

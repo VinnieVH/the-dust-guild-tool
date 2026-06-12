@@ -42,38 +42,9 @@ export const softresSheetRepository = {
     return { id: created.id };
   },
 
-  // Edit an existing sheet's name / link. When the softres id changes, the old
-  // reservations are orphaned — delete them explicitly (logged) so the queue and
-  // matrix never show stale rows from the previous sheet.
-  async updateSheet(
-    id: string,
-    input: { name: string; softresId: string; token?: string | null },
-  ): Promise<void> {
-    const { name, softresId, token = null } = input;
-    const existing = await db.softresSheet.findUnique({
-      where: { id },
-      select: { softresId: true, raidNightId: true },
-    });
-    if (!existing) return;
-
-    if (existing.softresId !== softresId) {
-      const { count } = await db.reservation.deleteMany({
-        where: { softresSheetId: id },
-      });
-      if (count > 0) {
-        console.warn(
-          `[softres] sheet ${id} (night ${existing.raidNightId}) re-pointed ` +
-            `${existing.softresId} -> ${softresId}; deleted ${count} orphaned reservations`,
-        );
-      }
-    }
-    await db.softresSheet.update({
-      where: { id },
-      data: { name, softresId, token },
-    });
-  },
-
   // Remove a sheet and its reservations (FK cascade handles the children).
+  // Re-linking is remove + add: the saved character_aliases reconstruct the
+  // matches on the next sync, so no separate edit path is needed.
   async removeSheet(id: string): Promise<void> {
     await db.softresSheet.delete({ where: { id } });
   },
