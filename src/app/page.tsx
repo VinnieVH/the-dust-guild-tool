@@ -59,7 +59,7 @@ export default async function Home() {
       {/* Hero */}
       <section className="fel-atmosphere relative mb-10 overflow-hidden rounded-2xl border border-fel-800 px-8 py-14 text-center">
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.35em] text-fel-300">
-          Burning Legion · TBC
+          The Burning Crusade
         </p>
         <h1 className="fel-glow-text text-5xl font-black tracking-tight text-fel-300 sm:text-6xl">
           The Dust

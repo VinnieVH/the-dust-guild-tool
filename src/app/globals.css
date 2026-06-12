@@ -114,3 +114,47 @@ body {
     animation: fel-pulse 4s ease-in-out infinite;
   }
 }
+
+/*
+ * Side-gutter scenery — fills the empty obsidian beside the centered content
+ * column on wide screens. Reuses the `.fel-atmosphere` language (fel glow,
+ * void-violet, obsidian grid) so it reads as the same atmosphere bleeding in
+ * from the edge, not a new motif. Decorative only: low opacity, fades to nothing
+ * toward the content so it never competes for attention. One class, mirrored per
+ * side via `.fel-gutter--left/right`. Visibility is gated to wide viewports in
+ * the markup (the gutters only exist past the content max-width).
+ */
+.fel-gutter {
+  background-color: var(--color-legion-950);
+  background-image:
+    /* a faint fel column hugging the outer edge — the only real accent */
+    radial-gradient(
+      55% 55% at 0% 35%,
+      color-mix(in srgb, var(--color-fel-glow) 6%, transparent) 0%,
+      transparent 68%
+    ),
+    /* the same obsidian grid as the hero, echoed very faintly */
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-fel-600) 6%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-fel-600) 6%, transparent) 1px,
+      transparent 1px
+    );
+  background-size:
+    100% 100%,
+    46px 46px,
+    46px 46px;
+  /* Fade the panel out well before the content column so only the outer edge
+     carries any glow — keeps attention firmly on the center. */
+  -webkit-mask-image: linear-gradient(to right, black 0%, transparent 62%);
+  mask-image: linear-gradient(to right, black 0%, transparent 62%);
+}
+
+/* Right gutter mirrors the left so the two sides are symmetric. */
+.fel-gutter--right {
+  transform: scaleX(-1);
+}

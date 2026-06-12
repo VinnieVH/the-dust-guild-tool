@@ -29,6 +29,20 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/*
+         * Side-gutter scenery. Fixed behind everything, only shown once the
+         * viewport is wide enough that empty space opens beside the centered
+         * content column (max-w-5xl = 64rem). Each panel is the width of one
+         * gutter; the fel atmosphere fades inward so it never competes with the
+         * content. Decorative: no pointer events, hidden from the a11y tree.
+         */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 -z-10 hidden justify-between xl:flex"
+        >
+          <div className="fel-gutter h-full w-[max(0px,calc((100vw-64rem)/2))]" />
+          <div className="fel-gutter fel-gutter--right h-full w-[max(0px,calc((100vw-64rem)/2))]" />
+        </div>
         <SiteHeader />
         <main className="flex-1">{children}</main>
       </body>
