@@ -12,7 +12,13 @@ interface GqlResponse<T> {
   errors?: Array<{ message: string; path?: (string | number)[] }>;
 }
 
-export class WclClient {
+// Minimal transport seam the adapter depends on — lets tests inject a fake
+// querier (e.g. to exercise event pagination) without real HTTP.
+export interface WclQuerier {
+  query<T>(document: string, variables: Record<string, unknown>): Promise<T>;
+}
+
+export class WclClient implements WclQuerier {
   constructor(private readonly creds: WclCredentials) {}
 
   async query<T>(

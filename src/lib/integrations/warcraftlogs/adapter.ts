@@ -2,7 +2,7 @@ import type { ExternalReport } from "@/lib/domain/external";
 import { IntegrationError } from "@/lib/integrations/errors";
 import type { IPerformanceSource } from "@/lib/integrations/interfaces";
 import type { WclCredentials } from "./auth";
-import { WclClient } from "./client";
+import { WclClient, type WclQuerier } from "./client";
 import type {
   WclEventStream,
   WclReportDetail,
@@ -19,10 +19,12 @@ import { EVENTS_PAGE, REPORT_DETAIL, REPORT_META } from "./queries";
 type EventDataType = "Interrupts" | "Dispels" | "CombatantInfo";
 
 export class WarcraftLogsAdapter implements IPerformanceSource {
-  private readonly client: WclClient;
+  private readonly client: WclQuerier;
 
-  constructor(creds: WclCredentials) {
-    this.client = new WclClient(creds);
+  // `client` is injectable for tests (defaults to a real WclClient). Tests use
+  // it to exercise the event-pagination loop without live HTTP.
+  constructor(creds: WclCredentials, client?: WclQuerier) {
+    this.client = client ?? new WclClient(creds);
   }
 
   async fetchReport(reportCode: string): Promise<ExternalReport> {

@@ -54,8 +54,14 @@ export interface ExternalPerformance {
   /** Character name on the WCL report. */
   name: string;
   role: MainRole;
-  /** Mean parse percentile across fights present (0-100). */
+  /** Mean parse percentile across fights present (0-100). This is what every
+   *  role crown ranks on — fair across roles/specs. */
   parseAvg: number;
+  /** Display-only flavor number from the parse ranking's `amount`. NOTE: WCL's
+   *  `compare:Parses` amount is damage-biased, so this is ~0 for healers (their
+   *  real metric is HPS, not captured here). No achievement scores on it.
+   *  Capturing true HPS is deferred to the 4.5 UI (would need a Healing table
+   *  query). Don't treat 0 as "did nothing". */
   dpsOrHps: number;
   deaths: number;
   /** Successful interrupts (counted from interrupt events by source). */
