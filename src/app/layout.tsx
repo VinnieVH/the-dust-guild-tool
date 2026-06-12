@@ -40,7 +40,7 @@ export default function RootLayout({
           aria-hidden
           className="pointer-events-none fixed inset-0 -z-10 hidden justify-between xl:flex"
         >
-          <div className="fel-gutter h-full w-[max(0px,calc((100vw-64rem)/2))]" />
+          <div className="fel-gutter fel-gutter--left h-full w-[max(0px,calc((100vw-64rem)/2))]" />
           <div className="fel-gutter fel-gutter--right h-full w-[max(0px,calc((100vw-64rem)/2))]" />
         </div>
         <SiteHeader />
