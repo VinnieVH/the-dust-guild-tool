@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WOW_CLASSES } from "@/lib/domain/wow";
+import { ToastDemo } from "./toast-demo";
 
 // Demo page for the fel design-system primitives (plan §1.6).
 export default function StyleguidePage() {
@@ -111,6 +112,15 @@ export default function StyleguidePage() {
           Placeholder for empty lists and not-yet-built pages — dashed fel
           border, ringed icon, supporting copy.
         </EmptyState>
+      </section>
+
+      <section className="flex max-w-xl flex-col gap-3">
+        <h2 className="text-lg font-semibold">Achievement toast</h2>
+        <p className="text-sm text-fel-200">
+          WoW-style gold banner that fires when a raid night&apos;s results are
+          first viewed (Phase 5.1). Replays the entrance + auto-advance here.
+        </p>
+        <ToastDemo />
       </section>
     </div>
   );
