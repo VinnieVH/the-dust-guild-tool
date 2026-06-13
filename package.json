@@ -13,7 +13,10 @@
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit",
+    "test:db:prepare": "node scripts/prepare-test-db.mjs",
+    "pretest:integration": "yarn test:db:prepare",
     "test:integration": "vitest run --project integration",
+    "pretest:all": "yarn test:db:prepare",
     "test:all": "vitest run",
     "test:watch": "vitest --project unit",
     "format": "prettier --write ."

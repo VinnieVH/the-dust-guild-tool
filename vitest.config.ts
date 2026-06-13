@@ -29,6 +29,9 @@ export default defineConfig({
           environment: "node",
           include: ["tests/integration/**/*.{test,spec}.{ts,tsx}"],
           setupFiles: ["./tests/setup.integration.ts"],
+          // Wipes the test DB after the whole suite — a crashed test that skips
+          // its afterEach can never poison the next run.
+          globalSetup: ["./tests/teardown.integration.ts"],
         },
       },
     ],

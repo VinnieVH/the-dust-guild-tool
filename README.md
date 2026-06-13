@@ -30,6 +30,14 @@ yarn test:integration   # integration (needs docker-compose Postgres up)
 yarn test:all           # both
 ```
 
+Integration tests run against a **dedicated `guildtool_test` database** (same
+Postgres container, separate database), never the `guildtool` DB the running app
+writes to — so test fixtures can never spill into real guild data. The test DB is
+auto-created, migrated, and seeded by `yarn test:db:prepare` (run automatically
+before `test:integration`/`test:all`), and TRUNCATEd after the suite so a crashed
+test can't poison the next run. A guard refuses to touch any DB whose name doesn't
+end in `_test`. Override the location with `TEST_DATABASE_URL` if needed.
+
 ## Syncing
 
 Sync jobs pull from external APIs into Postgres; the UI only ever reads from
