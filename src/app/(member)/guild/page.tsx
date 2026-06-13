@@ -93,6 +93,10 @@ export default async function GuildPage() {
         <p className="text-fel-200">
           Our fastest clears and where we rank — realm, region, world.
         </p>
+        <p className="mt-1 text-xs text-fel-200/70">
+          Ranks are Warcraft Logs combined-zone speed for the current phase, so
+          they may differ from the per-raid splits on the WCL site.
+        </p>
       </header>
 
       <section className="mb-10">
