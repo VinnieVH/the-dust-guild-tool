@@ -36,6 +36,7 @@ function fakeStore(known: Record<string, string>) {
     async upsertReport() {
       return { wclReportId: "wr1" };
     },
+    async deleteReport() {},
     async replacePerformances(_id, rows) {
       captured.rows = rows;
     },

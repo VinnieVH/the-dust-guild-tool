@@ -15,11 +15,20 @@ export interface AdminSheet {
   softresId: string;
 }
 
+export interface AdminWclReport {
+  id: string;
+  reportCode: string;
+  zone: string;
+  performanceCount: number;
+  unmatchedCount: number;
+}
+
 export interface AdminRaidNightDetail {
   id: string;
   title: string;
   date: Date;
   sheets: AdminSheet[];
+  reports: AdminWclReport[];
 }
 
 // Recent + upcoming nights, split into upcoming (soonest first) and past
@@ -67,6 +76,15 @@ export async function getRaidNightForAdmin(
         orderBy: { name: "asc" },
         select: { id: true, name: true, softresId: true },
       },
+      reports: {
+        orderBy: { reportCode: "asc" },
+        select: {
+          id: true,
+          reportCode: true,
+          zone: true,
+          performances: { select: { characterId: true } },
+        },
+      },
     },
   });
   if (!night) return null;
@@ -78,6 +96,13 @@ export async function getRaidNightForAdmin(
       id: s.id,
       name: s.name,
       softresId: s.softresId,
+    })),
+    reports: night.reports.map((r) => ({
+      id: r.id,
+      reportCode: r.reportCode,
+      zone: r.zone,
+      performanceCount: r.performances.length,
+      unmatchedCount: r.performances.filter((p) => p.characterId == null).length,
     })),
   };
 }

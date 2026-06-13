@@ -82,3 +82,31 @@ export async function addWclReportAction(
     return { error: message };
   }
 }
+
+const removeSchema = z.object({
+  raidNightId: z.string().min(1),
+  reportId: z.string().min(1),
+});
+
+// Remove a WCL report (and its performances, via cascade), then re-run the
+// per-night engine so awards reflect the remaining reports.
+export async function removeWclReportAction(
+  _prev: WclActionState,
+  formData: FormData,
+): Promise<WclActionState> {
+  const session = await auth();
+  if (session?.user?.role !== Role.OFFICER) return { error: "Officers only." };
+
+  const parsed = removeSchema.safeParse({
+    raidNightId: formData.get("raidNightId"),
+    reportId: formData.get("reportId"),
+  });
+  if (!parsed.success) return { error: "Invalid input." };
+
+  await wclSyncRepository.deleteReport(parsed.data.reportId);
+  await runNightEngineForNight(nightEngineRepository, parsed.data.raidNightId);
+
+  revalidatePath(`/admin/raid-nights/${parsed.data.raidNightId}`);
+  revalidatePath(`/raids/${parsed.data.raidNightId}`);
+  return { success: "Report removed." };
+}

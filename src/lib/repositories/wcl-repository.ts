@@ -32,6 +32,10 @@ export const wclSyncRepository: WclSyncStore = {
     return { wclReportId: report.id };
   },
 
+  async deleteReport(reportId) {
+    await db.wclReport.delete({ where: { id: reportId } });
+  },
+
   async replacePerformances(wclReportId, rows) {
     // Re-ingest semantics: drop the report's old rows, insert the fresh set.
     await db.$transaction([

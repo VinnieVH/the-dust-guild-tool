@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { getRaidNightForAdmin } from "@/lib/repositories/admin-queries";
 import { SheetManager } from "./sheet-manager";
+import { WclReportManager } from "./wcl-report-manager";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
@@ -35,6 +36,16 @@ export default async function AdminRaidNightDetailPage({
           immediately; removing deletes its reservations.
         </p>
         <SheetManager raidNightId={night.id} sheets={night.sheets} />
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="mb-1 font-semibold text-fel-300">Warcraft Logs reports</h2>
+        <p className="mb-4 text-sm text-fel-200">
+          Paste a WCL report link (or code) after the raid. Performances are
+          ingested and achievements re-awarded automatically. Unmatched character
+          names appear in the unmatched queue. Many reports per night are fine.
+        </p>
+        <WclReportManager raidNightId={night.id} reports={night.reports} />
       </Card>
 
       <div className="mt-6 flex gap-4 text-sm">

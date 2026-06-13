@@ -28,6 +28,9 @@ export interface WclSyncStore {
    * Replace ALL performance rows for a report with the given set (re-ingest
    * semantics). Each row carries the resolved characterId (or null) + rawName.
    */
+  /** Delete a report and its performances (cascade). */
+  deleteReport(reportId: string): Promise<void>;
+
   replacePerformances(
     wclReportId: string,
     rows: Array<{
