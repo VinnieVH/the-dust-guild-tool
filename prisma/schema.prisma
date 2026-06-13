@@ -32,6 +32,10 @@ model User {
   signups       Signup[]
   accounts      Account[]
   sessions      Session[]
+  // Current attendance streak (raids in a row). A display-only STAT, recomputed
+  // each sync — not an award. Null until first computed.
+  currentStreak    Int?
+  streakMilestones StreakMilestone[]
 
   @@map("users")
 }
@@ -70,6 +74,7 @@ model RaidNight {
   signups           Signup[]
   reports           WclReport[]
   awards            AchievementAward[]
+  streakMilestones  StreakMilestone[]
 
   @@map("raid_nights")
 }
@@ -162,19 +167,31 @@ model WclReport {
 }
 
 model PlayerPerformance {
-  id            String    @id @default(cuid())
-  wclReportId   String
-  characterId   String
+  id          String  @id @default(cuid())
+  wclReportId String
+  // Nullable: a WCL name that doesn't resolve to a Character yet sits in the
+  // officer unmatched queue (same pattern as Reservation). rawName is always
+  // kept so the queue can show it and resolving backfills characterId.
+  characterId String?
+  rawName     String
   role          MainRole
   parseAvg      Float
   dpsOrHps      Float
   deaths        Int
   interrupts    Int
   dispels       Int
+  // Consumable presence (Fully Buffed) — self-applied + allowlist classified by
+  // the WCL mapper. See docs/achievement-design.md "Consumable detection".
+  hadFlask      Boolean    @default(false)
+  hadFood       Boolean    @default(false)
+  hadElixir     Boolean    @default(false)
   fightsPresent Int
-  wclReport     WclReport @relation(fields: [wclReportId], references: [id], onDelete: Cascade)
-  character     Character @relation(fields: [characterId], references: [id])
+  wclReport     WclReport  @relation(fields: [wclReportId], references: [id], onDelete: Cascade)
+  character     Character? @relation(fields: [characterId], references: [id])
 
+  // One row per (report, reserved name): re-ingesting a report replaces rows,
+  // and a name appears once per report.
+  @@unique([wclReportId, rawName])
   @@map("player_performances")
 }
 
@@ -186,10 +203,15 @@ model Achievement {
   icon        String
   category    String
   awards      AchievementAward[]
+  milestones  StreakMilestone[]
 
   @@map("achievements")
 }
 
+// Per-night awards (personal + guild). Written by the achievement engine, which
+// regenerates them per night (delete-by-raidNightId + re-award). Keyed by
+// Character: personal awards go to the winner's character; guild awards
+// ("everyone present") write one row per present character.
 model AchievementAward {
   id            String      @id @default(cuid())
   achievementId String
@@ -199,7 +221,51 @@ model AchievementAward {
   character     Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
   raidNight     RaidNight   @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
 
+  // One row per (achievement, character, night): re-running the engine for a
+  // night upserts rather than duplicating.
+  @@unique([achievementId, characterId, raidNightId])
   @@map("achievement_awards")
+}
+
+// Attendance streak milestones (5/10/20… raids in a row). SEPARATE from
+// AchievementAward by design: a streak is a per-USER fact computed from full
+// date-ordered history, NOT per-night data. The per-night engine's
+// delete-by-raidNightId must never be able to touch these (it can't regenerate
+// them — it only sees one night). Owned by the attendance-streak service, which
+// recomputes from history and upserts. `raidNightId` records the night the
+// milestone was crossed (for display); the unique key is (user, achievement) so
+// recompute is idempotent — you reach "10 in a row" once, kept forever.
+model StreakMilestone {
+  id            String      @id @default(cuid())
+  userId        String
+  achievementId String
+  raidNightId   String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  raidNight     RaidNight   @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("streak_milestones")
+}
+
+// Live guild standing per zone (display-only, NEVER awarded). Refreshed each
+// sync from WCL guildData.zoneRanking. One row per zone id. See
+// docs/achievement-design.md "Live standing".
+model GuildZoneRanking {
+  id              String   @id @default(cuid())
+  zoneId          Int      @unique
+  zoneName        String
+  speedWorldRank  Int?
+  speedRegionRank Int?
+  speedServerRank Int?
+  // WoW item-quality tier for the speed rank ("rare", "epic"…) — UI theming.
+  speedColor      String?
+  progWorldRank   Int?
+  progRegionRank  Int?
+  progServerRank  Int?
+  fetchedAt       DateTime
+
+  @@map("guild_zone_rankings")
 }
 
 // ---------------------------------------------------------------------------

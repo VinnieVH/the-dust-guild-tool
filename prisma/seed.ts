@@ -1,4 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { ALL_ACHIEVEMENTS } from "../src/lib/domain/achievements.ts";
 import { PrismaClient } from "../src/generated/prisma/client.ts";
 
 // Seed: promote configured Discord IDs to OFFICER. A user may not have signed
@@ -8,6 +9,18 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
 
 async function main() {
+  // Achievement catalog — idempotent upsert by key (single source of truth in
+  // src/lib/domain/achievements.ts). Updating a name/icon there + re-seeding
+  // refreshes the row without touching awards.
+  for (const a of ALL_ACHIEVEMENTS) {
+    await db.achievement.upsert({
+      where: { key: a.key },
+      update: { name: a.name, description: a.description, icon: a.icon, category: a.category },
+      create: a,
+    });
+  }
+  console.log(`Seeded ${ALL_ACHIEVEMENTS.length} achievements`);
+
   const ids = (process.env.OFFICER_DISCORD_IDS ?? "")
     .split(",")
     .map((s) => s.trim())
