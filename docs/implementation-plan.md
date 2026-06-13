@@ -481,6 +481,134 @@ long as WCL resolution stays name-based.
 
 ---
 
+## Phase 6 — Deploy to Vercel (app + Postgres)
+
+**Goal:** the whole tool runs on Vercel — the Next app *and* the database —
+with no local machine in the loop. Local dev/CI/integration keep the
+docker-compose Postgres untouched; **only production points at the hosted DB.**
+
+### Decisions (locked 2026-06-14)
+
+- **Database host:** **Neon via the Vercel Marketplace** (this is what "Vercel
+  Postgres" now is under the hood — serverless Postgres, env vars auto-injected
+  into the project, connection pooling built in). Added as a Storage product in
+  the Vercel dashboard, not a separate neon.tech account.
+- **Plan tier:** **Pro.** This is load-bearing, not incidental — Vercel **Hobby
+  rejects any cron expression that runs more than once/day at *deploy* time**
+  (`*/30 * * * *` and `0 * * * *` both fail with "Hobby accounts are limited to
+  daily cron jobs"). Our `vercel.json` runs sync-raid-helper + sync-softres every
+  30 min and sync-guild hourly, so Pro (per-minute crons) is required. Do not
+  deploy these crons on Hobby — they will fail the build.
+- **Migrations:** run **`prisma migrate deploy` in the Vercel build step** (auto-
+  applies pending migrations before each deploy goes live).
+
+### Already true (verified, no work needed)
+
+- **Cron auth is already Vercel-native.** Vercel automatically sends the
+  project's `CRON_SECRET` as `Authorization: Bearer <CRON_SECRET>` on every cron
+  invocation. Our `isAuthorizedCron` compares exactly that — so the three crons
+  authenticate on Vercel with zero code change (confirmed against Vercel docs +
+  `tests/integration/cron-guards.test.ts`).
+- **Runtime fit.** We run on the Node runtime (the proxy + all routes), so the
+  existing `@prisma/adapter-pg` (TCP) driver works as-is against Neon's pooled
+  endpoint. **No driver swap** (the Neon serverless driver is only needed on the
+  Edge runtime, which we don't use).
+- **Generated Prisma client.** `src/generated/prisma` is gitignored and rebuilt
+  by `postinstall: prisma generate`, which Vercel runs after install — so the
+  client is regenerated on every deploy. No commit-the-client workaround needed.
+- **Syncs are idempotent + reconciliation-based** (every phase tested it), which
+  is exactly Vercel's stated requirement for cron resilience (best-effort
+  delivery: a missed or duplicated tick is safe).
+
+### Step 6.1 — Provision Neon + wire the connection URLs
+
+- In the Vercel project: **Storage → add Neon Postgres** (Marketplace). It
+  injects connection env vars for the **Production** environment.
+- **Pooled vs direct is mandatory, not optional.** Map two app env vars:
+  - `DATABASE_URL` → Neon's **pooled** endpoint (the `-pooler` host). The app
+    (serverless functions, many warm instances) must use the pooler or it
+    exhausts Postgres connections.
+  - `DIRECT_DATABASE_URL` → Neon's **direct** (unpooled) endpoint. Migrations
+    take advisory locks and run DDL that transaction-mode pooling breaks, so
+    `migrate deploy` must use the direct URL.
+- Add `DIRECT_DATABASE_URL` to `src/lib/env.ts` (optional in the schema so local
+  dev — which only sets `DATABASE_URL` — still boots) and document both in
+  `.env.example`.
+- Point migrations at the direct URL. With Prisma 7's `prisma.config.ts`
+  resolving the datasource from `DATABASE_URL`, the migrate step must override it
+  — either a `directUrl` on the datasource block or
+  `DATABASE_URL=$DIRECT_DATABASE_URL prisma migrate deploy` in the build command
+  (pick one; document why in the file).
+- **Scope to Production only.** Set the Neon URLs on the **Production**
+  environment in Vercel, NOT Preview — otherwise a preview deploy's build step
+  runs `migrate deploy` against prod. (Neon DB branching for previews is a clean
+  fit but out of scope for v1; just don't leak the prod URL into preview.)
+- **Accept:** `DATABASE_URL` (pooled) + `DIRECT_DATABASE_URL` (direct) exist in
+  Vercel Production env; `env.ts` validates them; local dev still boots on the
+  docker URL alone.
+
+### Step 6.2 — Build command applies migrations
+
+- Set the Vercel **Build Command** so migrations run before the app builds, e.g.
+  `prisma migrate deploy && next build` (using `DIRECT_DATABASE_URL`). Keep
+  `package.json`'s `build` as plain `next build` for local; do the migrate
+  override in the Vercel build setting or a dedicated `vercel-build` script —
+  document the choice.
+- Seeding is a **one-time manual** step on first prod cutover (`prisma db seed`
+  against the direct URL with `OFFICER_DISCORD_IDS` set), NOT in the build (the
+  seed is not idempotent for officer promotion the way migrations are, and
+  re-seeding on every deploy is wrong).
+- **Accept:** a fresh deploy applies all 14 migrations to the Neon DB before
+  serving; a redeploy with no new migrations is a no-op.
+
+### Step 6.3 — Function duration for the heavy cron
+
+- `sync-guild` does a lot in one request (fetch ~50 reports, auto-ingest new
+  ones, run the per-night engine per affected night, recompute speed records).
+  Default function timeout (60s on Pro) may not cover a cold backlog.
+- Set `export const maxDuration = 300` (Pro max) on
+  `src/app/api/cron/sync-guild/route.ts`. Measure real wall-time on the first
+  prod run; if a cold backlog can still exceed 300s, the follow-up is to chunk
+  ingestion (e.g. process N reports per invocation, rely on idempotent re-runs to
+  catch up) — note this as a known scaling edge, don't pre-build it.
+- **Accept:** `sync-guild` completes within `maxDuration` on a steady-state run
+  (one night's reports); the limit is documented for the backlog case.
+
+### Step 6.4 — Auth on the production domain
+
+- **Discord OAuth:** add `https://<prod-domain>/api/auth/callback/discord` to the
+  Discord application's redirect URIs (sign-in 400s without it).
+- **Vercel env:** set `AUTH_SECRET`, `AUTH_DISCORD_CLIENT_ID`,
+  `AUTH_DISCORD_CLIENT_SECRET`, and `AUTH_URL` (or `AUTH_TRUST_HOST=true`) so
+  Auth.js builds correct callback URLs behind Vercel's proxy. Plus the sync
+  secrets (`CRON_SECRET`, `RAID_HELPER_*`, `WCL_*`).
+- **Accept:** signing in with Discord on the prod domain creates/loads the user;
+  an OFFICER (seeded) reaches `/admin`; a MEMBER is redirected.
+
+### Step 6.5 — README deploy section + production dry-run
+
+- Add a "Deploying to Vercel" section to the README: the Neon storage step, the
+  pooled/direct URL split (and *why*), the Pro-plan cron requirement (with the
+  Hobby failure mode called out), the build-command migrate step, the one-time
+  seed, and the auth env/redirect checklist.
+- **Production dry-run:** deploy from a clean state → migrations apply → sign in
+  with Discord → trigger each cron (or wait for schedule) → link a sheet → paste
+  a WCL report → confirm `/raids`, `/raids/[id]`, `/leaderboard`, `/guild`,
+  `/profile` all render against the Neon DB.
+- **Accept:** the production dry-run passes top to bottom; the guild can use the
+  hosted URL without any local process running.
+
+### Out of scope for Phase 6 (named, not silently dropped)
+
+- Neon **preview branching** (per-PR ephemeral DBs) — nice, not needed for a
+  single-maintainer guild tool. Revisit if previews start needing real data.
+- **Cron chunking** for `sync-guild` — only if the backlog run exceeds
+  `maxDuration` in practice (Step 6.3).
+- Moving off `adapter-pg` to the Neon serverless driver — only if we ever push a
+  route to the Edge runtime (we don't).
+
+---
+
 ## Cross-cutting requirements (apply to every phase)
 
 1. **Fixtures before mappers.** For every external API, record at least one real response into `tests/fixtures/<source>/` before writing the mapper. Never code a mapper against an imagined shape.
@@ -492,4 +620,8 @@ long as WCL resolution stays name-based.
 
 ## Suggested commit sequence (one per step)
 
-`1.1 → 1.2 → 1.3 → 1.4 → 1.5 → 1.6 → 2.1 → 2.2 → 2.3 → 2.4 → 3.1 → 3.2 → 3.3 → 3.4 → 3.5 (ship) → 4.1 → 4.2 → 4.3 → 4.4 → 4.5 → 5.1 → 5.2 → 5.3 → 5.4 → 5.5`
+`1.1 → 1.2 → 1.3 → 1.4 → 1.5 → 1.6 → 2.1 → 2.2 → 2.3 → 2.4 → 3.1 → 3.2 → 3.3 → 3.4 → 3.5 (ship) → 4.1 → 4.2 → 4.3 → 4.4 → 4.5 → 5.1 → 5.2 → 5.3 → 5.4 (dropped) → 5.5 → 6.1 → 6.2 → 6.3 → 6.4 → 6.5`
+
+Phase 6 is largely Vercel-dashboard configuration; the code-touching parts are
+6.1 (`env.ts` + `.env.example` gain `DIRECT_DATABASE_URL`), 6.2 (build/migrate
+script), and 6.3 (`maxDuration` on the sync-guild route).
