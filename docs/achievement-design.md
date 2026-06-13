@@ -194,3 +194,74 @@ Both reward *paying attention* over raw output — squarely "everyone can shine.
 `hadFlask`, `hadFood`, `hadElixir` (booleans). `PlayerPerformance` (schema) gains
 the same three columns. Everything else (`parseAvg`, `dpsOrHps`, `deaths`,
 `fightsPresent`, `role`) already exists.
+
+---
+
+## Guild achievements + live rank (signed off 2026-06-13)
+
+> The guild wanted two things: **collective achievements** ("a raid where we
+> parsed very high", "we broke our last speed record") that **everyone present
+> earns**, and **our rank on speed clears** to be **visible**. These are TWO
+> different mechanisms — conflating them is a trap (see below).
+
+### The split: awardable per-night facts vs. a live cumulative stat
+
+| | Per-night guild achievements | Live guild standing |
+|---|---|---|
+| Example | "New SSC Speed Record", "Clean Sweep" | "Server #45 on SSC speed" |
+| Nature | An immutable fact about **one night** | A **moving, cumulative** number across all our reports, that changes when *other* guilds log |
+| Surfaced as | **Awarded** to every present member (trophy) + a guild banner | **Displayed** on a guild/dashboard page, refreshed each sync |
+| Earned? | Yes — "everyone who was there gets it" | **No** — nobody earns a rank; it's a stat |
+
+**Why rank is NOT an award:** `zoneRanking.speed.serverRank` (e.g. 45) reflects our
+all-time best vs. every other guild and drifts over time. Stamping it on a night's
+attendee profiles would (a) freeze a number that's wrong next week and (b)
+misattribute a cumulative-history stat to one night's roster. So rank is a
+**dashboard stat**, displayed only.
+
+### Data probe (verified live against guild "The Dust", id 809103)
+
+`guildData.guild(id).zoneRanking(zoneId)` returns, per zone, **`speed`** and
+**`progress`**, each with `worldRank`/`regionRank`/`serverRank` `{ number, color }`.
+For us, SSC/TK speed = world #363, region #204, **server #45** (`color: "rare"` —
+usable as an item-quality theme tier). One cheap query per zone; **no scraping
+other guilds**. TBC Classic zone ids resolve directly: Karazhan **1007**,
+Gruul/Mag **1008**, SSC/TK **1010**/**1056**, BT/Hyjal **1011**, ZA **1012**. The
+report's own `zone.id` tells us which to query.
+
+### Per-night guild achievements (awardable, reuse existing `AchievementAward`)
+
+Awarded to **every member present ≥ 75%** of the night's boss kills (reusing the
+`friendlyPlayers` presence already built). One `AchievementAward` row per attendee
+with `Achievement.category = "guild"`. **No new award schema** — same
+(achievementId, characterId, raidNightId) shape.
+
+| Award | Criterion | Notes |
+|---|---|---|
+| 🏆 **New Speed Record** | This night's clear time beats our prior best for that zone | **Internal PB** — see determinism rule. "Was a PB when it happened" (immutable). |
+| 🧹 **Clean Sweep** | All of the zone's bosses killed this night (full clear) | from kill fights vs. zone encounter count |
+| ⚙️ **Well-Oiled Machine** | Raid-average `parseAvg` over a threshold (e.g. ≥ 80) | celebrates a high-execution night, collectively |
+
+**Clear-time metric (defined):** WCL `speed` is per *zone* (SSC/TK is one combined
+clear, not per-instance). Duration = report-level `endTime − startTime` (whole-run
+wall clock). Requires adding `startTime`/`endTime` to the `REPORT_META` query (a
+small adapter change; currently unselected).
+
+**PB determinism rule (binding for the 4.4 engine):** "New Speed Record" must be a
+**pure function of this night's clear time vs. every raid night chronologically
+before it by RAID DATE** (not ingestion order). This keeps the
+delete-and-re-award engine deterministic and correct even if reports are ingested
+out of order or backfilled. Semantics = **"was a record when it happened"**: the
+badge is kept forever even after a later night beats it (matches the all-positive
+culture; also order-independent — a later faster night doesn't strip an earlier
+badge).
+
+### Live standing (display-only)
+
+New small table (e.g. `guild_zone_rankings`): one row per `zoneId`, storing latest
+`speedWorldRank/RegionRank/ServerRank` (+ `color`) and `progress*` ranks, plus
+`fetchedAt`. Refreshed by the sync. Shown on a guild/dashboard page. **Optional
+flavor:** a non-awarded "new best server rank!" callout on the dashboard when a
+refresh improves a rank — celebratory without stamping profiles.
+
+**Deferred consciously:** per-encounter rank detail; rank history/sparklines.
