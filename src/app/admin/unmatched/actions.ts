@@ -9,6 +9,7 @@ import { reservationResolveRepository } from "@/lib/repositories/reservation-rep
 import {
   nightEngineRepository,
   resolvePerformanceRepository,
+  speedRecordRepository,
 } from "@/lib/repositories/wcl-repository";
 import {
   acceptSuggestion,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/services/resolve-reservation-service";
 import { linkPerformanceName } from "@/lib/services/resolve-performance-service";
 import { runNightEngineForNight } from "@/lib/services/run-night-engine-service";
+import { runSpeedRecords } from "@/lib/services/run-speed-record-service";
 
 export type ResolveActionState = { error?: string; success?: string };
 
@@ -151,6 +153,12 @@ export async function linkPerformanceAction(
   for (const raidNightId of res.affectedRaidNightIds) {
     await runNightEngineForNight(nightEngineRepository, raidNightId);
     revalidatePath(`/raids/${raidNightId}`);
+  }
+  // Speed records too: a now-resolved performer on a record night should get
+  // new-speed-record like everyone else who was there ("everyone who was there
+  // gets it"). The pass recomputes the present-set from resolved performances.
+  if (res.affectedRaidNightIds.length > 0) {
+    await runSpeedRecords(speedRecordRepository);
   }
   revalidate();
   return { success: `Linked ${parsed.data.rawName} (${res.affectedRaidNightIds.length} night(s) re-scored).` };
