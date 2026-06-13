@@ -37,8 +37,14 @@ export async function SiteHeader() {
             <Link href="/raids" className={navLink}>
               Raids
             </Link>
+            <Link href="/guild" className={navLink}>
+              Guild
+            </Link>
             <Link href="/leaderboard" className={navLink}>
               Leaderboard
+            </Link>
+            <Link href="/profile" className={navLink}>
+              Profile
             </Link>
             {user.role === Role.OFFICER && (
               <Link href="/admin/raid-nights" className={navLink}>

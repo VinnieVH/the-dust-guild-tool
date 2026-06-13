@@ -14,6 +14,8 @@ describe("decideGate", () => {
   it("requires a session for member routes", () => {
     expect(decideGate("/raids", null)).toEqual({ kind: "unauthorized", api: false });
     expect(decideGate("/leaderboard", null)).toEqual({ kind: "unauthorized", api: false });
+    expect(decideGate("/guild", null)).toEqual({ kind: "unauthorized", api: false });
+    expect(decideGate("/profile", null)).toEqual({ kind: "unauthorized", api: false });
   });
 
   it("lets any signed-in user into member routes", () => {

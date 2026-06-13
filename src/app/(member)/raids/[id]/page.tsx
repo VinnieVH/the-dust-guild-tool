@@ -9,6 +9,7 @@ import {
   type RosterEntry,
   getRaidNightDetail,
 } from "@/lib/repositories/raid-queries";
+import { getNightResults } from "@/lib/repositories/night-results-queries";
 import { getOverviewData } from "@/lib/repositories/reserve-overview-queries";
 import {
   buildOverview,
@@ -84,6 +85,9 @@ export default async function RaidNightPage({
     (m) => m.status !== SignupStatus.CONFIRMED,
   );
 
+  // Night results: achievement winners (populated once a WCL report is ingested).
+  const results = await getNightResults(id);
+
   // Soft-res overview: only render when at least one sheet is linked.
   const overview = buildOverview(await getOverviewData(id));
   const poke = buildPokeList(overview);
@@ -99,6 +103,35 @@ export default async function RaidNightPage({
         <h1 className="text-xl font-semibold text-fel-300">{night.title}</h1>
         <p className="text-fel-200">{dateFmt.format(night.date)}</p>
       </header>
+
+      {results.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-3 font-semibold text-gold">Night results</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {results.map((award) => (
+              <div
+                key={award.key}
+                className="rounded-lg border border-gold/50 bg-legion-800 p-3 shadow-[0_0_12px_-3px_var(--color-gold)]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xl" aria-hidden>
+                    {award.icon}
+                  </span>
+                  <span className="font-semibold text-gold">{award.name}</span>
+                </div>
+                <p className="mt-1 text-xs text-fel-200">{award.description}</p>
+                <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                  {award.winners.map((w, i) => (
+                    <li key={`${w.characterName}-${i}`}>
+                      <ClassName name={w.characterName} wowClass={w.characterClass} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {ROLE_COLUMNS.map(({ role, label }) => {
