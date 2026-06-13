@@ -6,6 +6,10 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/api/cron/sync-softres",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/api/cron/sync-guild",
       "schedule": "0 * * * *"
     }

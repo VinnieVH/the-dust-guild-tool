@@ -4,8 +4,8 @@ import { z } from "zod";
 // env.server.ts (importing THAT triggers fail-fast validation at boot); this
 // module stays side-effect-free so it can be unit-tested without real env.
 //
-// Phase 1 needs only auth + DB. Integration secrets (Raid-Helper, WCL, webhook)
-// are optional now and validated only once a later phase requires them.
+// Phase 1 needs only auth + DB. Integration secrets (Raid-Helper, WCL) are
+// optional now and validated only once a later phase requires them.
 const schema = z.object({
   // --- Required from Phase 1 ---
   DATABASE_URL: z.string().url(),
@@ -21,7 +21,6 @@ const schema = z.object({
   WCL_CLIENT_SECRET: z.string().optional(), // Phase 4
   WCL_GUILD_ID: z.coerce.number().int().optional(), // Phase 4 (guild rank + attendance)
   CRON_SECRET: z.string().optional(), // Phase 2 (cron guard)
-  DISCORD_WEBHOOK_URL: z.string().url().optional(), // Phase 5
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });

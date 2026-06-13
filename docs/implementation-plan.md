@@ -412,13 +412,29 @@ long as WCL resolution stays name-based.
 
 ## Phase 5 — Polish & engagement
 
-### Step 5.1 — Achievement toast
-- `components/achievement-toast.tsx`: WoW-style gold banner toast (gold border, shield/icon, title + character name) with Framer Motion entrance (`yarn add framer-motion`). Fire on the raid page when results are first viewed (client component reading awards via props).
-- **Accept:** visually matches the WoW achievement frame vibe; respects `prefers-reduced-motion`.
+### Step 5.1 — Achievement toast — DONE
+- `components/achievement-toast.tsx`: WoW-style gold banner toast (gold border,
+  icon, title + winner names) with Framer Motion entrance (`framer-motion`
+  added). Mounted on `/(member)/raids/[id]`; consumes the same `NightAward[]`
+  shape `getNightResults` feeds the "Night results" section — one source of truth.
+- **First-view semantics:** fires once per *award set*, not per visit. The seen
+  flag is keyed `dust:awards-seen:<raidNightId>:<fingerprint>` in localStorage,
+  where the fingerprint hashes each achievement→winner mapping. Re-ingesting a
+  report that *changes* the awards re-fires; revisiting identical results stays
+  silent. The unseen check runs in a lazy `useState` initializer (synchronous,
+  SSR-safe → no flash); the mark-as-seen write is in an effect (so it doesn't
+  double-fire render under StrictMode).
+- Respects `prefers-reduced-motion` via `useReducedMotion` (opacity-only fade).
+- **Accept:** ✅ typecheck/lint/build green; gold frame vibe; reduced-motion path.
 
-### Step 5.2 — Profiles & trophy cabinet
-- `/(member)/profile`: trophy cabinet — all `achievement_awards` for the member's characters, grouped by achievement, with counts ("Deadliest ×4"), item-quality borders by category.
-- **Accept:** awards from Phase 4 fixtures render; empty state is friendly.
+### Step 5.2 — Profiles & trophy cabinet — DONE (in Phase 4 surfacing)
+- `/(member)/profile` already ships the trophy cabinet: characters list, all
+  `achievement_awards` grouped by achievement with counts ("×4"), the active
+  raid-streak badge, and a friendly empty state. Built as part of the Phase 4
+  "member surfacing" commit (`ae18951`), so no Phase 5 work was needed.
+- **Deviation:** "item-quality borders by category" was not implemented — cards
+  use the uniform gold achievement border. Cosmetic; revisit only if wanted.
+- **Accept:** ✅ awards render grouped with counts; empty state friendly.
 
 ### Step 5.3 — Leaderboard (Hall of Champions) — DONE
 - `/(member)/leaderboard`: NOT a ranked trophy ladder (deliberately — the user was
@@ -434,15 +450,34 @@ long as WCL resolution stays name-based.
   (alt-dedup, tie co-holders, unclaimed fallback, streak ordering — live Postgres).
 - **Accept:** ✅ matches hand-seeded counts; full suite green (156 unit + 37 integration).
 
-### Step 5.4 — Discord webhook announcements
-- After the engine runs, POST an embed to `DISCORD_WEBHOOK_URL`: night title + winners per title with emoji. Feature-flag via env var presence; failures are logged, never block ingestion.
-- **Accept:** webhook fires once per engine run (not on idempotent re-runs unless awards changed).
+### Step 5.4 — Discord webhook announcements — DROPPED (2026-06-14)
+- Cut at the user's request ("I do not need it"). No code was written. The dead
+  `DISCORD_WEBHOOK_URL` env var was removed from `env.ts` and `.env.example` so
+  the config surface stays honest. The award-diff design that would have driven
+  it (read night awards before the scoped delete, announce only additions) is
+  recorded here in case the feature is ever revived.
 
-### Step 5.5 — Hardening pass
-- Add an ops README section: required env vars, cron setup (Vercel + self-hosted), seeding officers, recovering from a bad sync (re-run is idempotent everywhere).
-- Verify all `/api/cron/*` and `/api/admin/*` routes enforce their guards (write one integration test per guard).
-- Run a full dry-run: fresh DB → migrate → seed → sync → link sheets → sync SR → ingest WCL fixture → engine → all pages render.
-- **Accept:** dry-run checklist passes top to bottom.
+### Step 5.5 — Hardening pass — DONE (2026-06-14)
+- **Ops README:** added an env-var table, the full three-endpoint cron list
+  (`sync-raid-helper` + `sync-softres` + `sync-guild` — `sync-softres` was also
+  added to `vercel.json`, it had been missing), seeding-officers steps (incl. the
+  re-login-to-refresh-JWT gotcha), a bad-sync recovery runbook, a guard-coverage
+  note, and a fresh-environment dry-run block.
+- **Guard tests:** the two real guards are `isAuthorizedCron` (3 cron routes) and
+  `decideGate` (the proxy). `tests/integration/cron-guards.test.ts` invokes each
+  cron handler directly: no/wrong bearer → 401 (proves the handler wires the
+  guard, which the pure unit test can't), and a valid-bearer "gets past the guard"
+  probe for the two routes with a fast non-network exit (sync-guild is excluded —
+  it hits WCL immediately past the guard; its wiring is proven by the 401 cases).
+- **Deviation:** there are no `/api/admin/*` route handlers to test — admin writes
+  are server actions with inline `role === OFFICER` checks, gated by the proxy
+  (`decideGate`, exhaustively unit-tested). Documented in the README so the gap
+  is explicit, not silent.
+- **Dry-run:** fresh DB → `db:migrate` → `db:seed` (16 achievements) → full suite
+  (229 tests: 175 unit + 54 integration, the integration suite exercising the
+  sync/ingest/engine chain live against Postgres) → `yarn build` (all 14 routes
+  compile + render). Typecheck + lint clean.
+- **Accept:** ✅ guard tests green; README runbook complete; dry-run passes.
 
 ---
 
