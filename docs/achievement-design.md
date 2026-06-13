@@ -9,16 +9,24 @@
 > A fun environment where **everyone can shine at something every raid** — not
 > just the top parsers. The point is engagement, not a meritocracy ladder.
 
+**All-positive default (2026-06-13):** no award ever labels someone "worst". Every
+award names only a *winner* or a threshold *reached*; the one banter award fires
+only on a genuine outlier and is usually not given. We do not want a toxic
+call-out culture, so the data is used to *celebrate*, never to rank-shame.
+
 So the set is organized by **who an award lets shine**, not by how easy it is to
-build. Three buckets:
+build. Four buckets:
 
 1. **Per-role winners** — a healer never loses to a DPS; each role has its own
    crown. The skill awards, made fair.
 2. **Effort & diligence** — reward showing up *prepared and present*: consumables,
    attendance. **The heart of "everyone can shine"** — a mediocre parser with
    perfect flask discipline still gets a trophy.
-3. **Wear-it-with-shame** — fun *because* it isn't merit (most deaths). Levels
-   the social field; the guild's best player can still be Floor Inspector.
+3. **Utility heroes** — reward *paying attention* (interrupts, dispels), not raw
+   output. Only ever names winners.
+4. **Affectionate banter** — Floor Inspector, but **outlier-gated, not
+   most-deaths** (see Bucket 3). Fun *only when it's genuinely a story*, never a
+   verdict on whoever happened to be highest.
 
 Every award below has: **criterion · min threshold · tie rule · who it lets shine ·
 data confidence**.
@@ -119,15 +127,27 @@ parser who brought flask + food + elixir beats a top parser who forgot consumes.
 Scored by **presence** (per sign-off) — see "Consumable detection" above for the
 self-source + allowlist filtering that makes it honest.
 
-### Bucket 3 — Wear it with shame (fun, not merit)
+### Bucket 3 — Affectionate banter (outlier-gated, NOT a "worst" ranking)
 
-| Award | Criterion | Min threshold | Who shines | Confidence |
+> **Culture decision (2026-06-13, binding).** The guild explicitly wants an
+> **all-positive default** — no one should ever be algorithmically labelled
+> "worst". So the only banter award, Floor Inspector, is **NOT** "most deaths".
+> It is an **outlier-only** award: it fires *only* when one player's deaths are a
+> genuine comedic outlier, and otherwise **is not given at all**. A clean or
+> normal night produces no Floor Inspector. This is what keeps it fun (it only
+> ever lands when it's actually a story) instead of toxic (it never just points
+> at whoever happened to be highest on a good night). Do **not** "simplify" this
+> later into a plain most-deaths award — that change reintroduces the call-out
+> the guild asked to avoid.
+
+| Award | Criterion | Gate | Who shines | Confidence |
 |---|---|---|---|---|
-| 💀 **Floor Inspector** | Most deaths in the night | min 1 death (no deaths → no award) | comic relief; often the *best* player who pushed too hard | ✅ |
+| 💀 **Floor Inspector** | One player's death count is a clear outlier | deaths ≥ 3 **and** ≥ 2× the runner-up's deaths; else **no award** | affectionate ribbing; only ever a genuine "the floor missed you" night | ✅ |
 
-Deliberately just one shame award — too many and it stops being funny. Death data
-is rich (killing blow, overkill) so the toast can be specific ("died to Lady Vashj
-3 times").
+The outlier gate (≥3 absolute **and** ≥2× runner-up) means: a 2-vs-1 night never
+triggers it; it takes a real outlier. Death data is rich (killing blow, the boss
+that did it) so the *single* toast can be a specific, funny story rather than a
+leaderboard. At most one Floor Inspector per night, often zero.
 
 ### Bucket 3b — Utility heroes (pulled into ship-now per sign-off)
 
@@ -155,13 +175,18 @@ Both reward *paying attention* over raw output — squarely "everyone can shine.
 |---|---|
 | Per-role winners (≥75% participation) | 🗡️ Deadliest · ✨ Lifebinder · 🛡️ Immovable Object |
 | Effort & diligence | 🧪 Fully Buffed (presence) · 📅 Perfect Attendance · 🥇 Iron Man (≥75%, multi) |
-| Wear-it-with-shame | 💀 Floor Inspector |
 | Utility heroes | 👢 Kick Commander · 🧼 Cleanse Crusader |
+| Affectionate banter (outlier-gated) | 💀 Floor Inspector |
 
 **Settled decisions:**
+- **All-positive default (2026-06-13).** 8 of the 9 awards only ever name a
+  *winner* — no award produces a "worst" label. The lone banter award (Floor
+  Inspector) is **outlier-gated**, not most-deaths, and is frequently *not*
+  awarded. See Bucket 3 culture note — binding.
 - **Participation threshold = 75%** for the per-role crowns and Iron Man.
 - **Fully Buffed = presence** — booleans `hadFlask`/`hadFood`/`hadElixir`, score =
   count of true categories, min 1 to win. Self-source + curated GUID allowlist.
+- **Floor Inspector gate:** deaths ≥ 3 **and** ≥ 2× the runner-up; else no award.
 - All ties → seeded coin-flip (`raidNightId + achievementKey`).
 - **Deferred:** Totem Twister, SR Speedrunner.
 
