@@ -44,11 +44,14 @@ export function classColor(wowClass: string): string {
 // ("all bosses killed"). Keyed by the zone name WCL reports — note SSC/TK is a
 // combined WCL zone (one "clear" spans both raids). Unknown zones return null,
 // and Clean Sweep simply won't fire for them (safe default).
+// Boss counts MUST match what WCL counts as "X/X" for the combined zone, since
+// the full-clear gate compares bossKills to this. Verified against WCL's own
+// Rankings panel: SSC/TK shows "10/10", Gruul/Mag "3/3".
 const ZONE_BOSS_COUNT: Record<string, number> = {
-  "SSC / TK": 11, // Serpentshrine (6) + The Eye (5)
+  "SSC / TK": 10, // Serpentshrine (6) + The Eye (4) — WCL: "10/10"
   Karazhan: 11,
-  "Gruul / Magtheridon": 3, // Gruul (2) + Magtheridon (1)
-  "BT / Hyjal": 14, // Black Temple (9) + Hyjal (5)
+  "Gruul / Magtheridon": 3, // Gruul (2) + Magtheridon (1) — WCL: "3/3"
+  "BT / Hyjal": 14, // Black Temple (9) + Hyjal (5) — UNVERIFIED until logged
   "Zul'Aman": 6,
 };
 

@@ -1,6 +1,7 @@
 import type {
   ExternalCompositionMember,
   ExternalGuildAttendance,
+  ExternalGuildReportRef,
   ExternalRaidEvent,
   ExternalReport,
   ExternalReservation,
@@ -34,4 +35,6 @@ export interface IGuildSource {
   fetchZoneRanking(guildId: number, zoneId: number): Promise<ExternalZoneRanking>;
   /** Raid composition (role/spec/ilvl) derived from one report's playerDetails. */
   fetchComposition(reportCode: string): Promise<ExternalCompositionMember[]>;
+  /** The guild's recent report list (code/zone/time) for auto-discovery. */
+  fetchReports(guildId: number, limit: number): Promise<ExternalGuildReportRef[]>;
 }

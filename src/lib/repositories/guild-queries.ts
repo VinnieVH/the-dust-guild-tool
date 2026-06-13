@@ -1,5 +1,5 @@
 import { MainRole } from "@/lib/domain/enums";
-import { is25ManZone, RAID_25_ZONES } from "@/lib/domain/wow";
+import { is25ManZone, RAID_25_ZONES, zoneBossCount } from "@/lib/domain/wow";
 import { db } from "@/lib/db";
 
 // Read-side view models for the guild dashboard: per-25-man-zone standings
@@ -20,16 +20,19 @@ export interface ZoneBestView {
 }
 
 export async function getZoneBests(): Promise<ZoneBestView[]> {
-  // Fastest clear per zone: min positive clearMs across the guild's reports.
-  // Mirrors the speed-record pass's "a zone's clear = its fastest report" rule,
-  // so this number agrees with the New Speed Record award.
+  // Fastest clear per zone: min positive clearMs across the guild's FULL clears.
+  // Only a full clear (every boss killed) counts — a fast partial must not beat
+  // a slow real clear (auto-ingest pulls partials too). Mirrors the speed-record
+  // pass's full-clear gate so this number agrees with the New Speed Record award.
   const reports = await db.wclReport.findMany({
     where: { clearMs: { gt: 0 } },
-    select: { zone: true, clearMs: true },
+    select: { zone: true, clearMs: true, bossKills: true },
   });
   const bestByZone = new Map<string, number>();
   for (const r of reports) {
     if (r.clearMs == null || !is25ManZone(r.zone)) continue;
+    const fullClear = r.bossKills != null && r.bossKills >= (zoneBossCount(r.zone) ?? Infinity);
+    if (!fullClear) continue;
     const cur = bestByZone.get(r.zone);
     if (cur == null || r.clearMs < cur) bestByZone.set(r.zone, r.clearMs);
   }

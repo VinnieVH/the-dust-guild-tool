@@ -1,6 +1,7 @@
 import type {
   ExternalCompositionMember,
   ExternalGuildAttendance,
+  ExternalGuildReportRef,
   ExternalZoneRanking,
 } from "@/lib/domain/external";
 import { MainRole } from "@/lib/domain/enums";
@@ -10,12 +11,14 @@ import type { WclCredentials } from "./auth";
 import { WclClient, type WclQuerier } from "./client";
 import type {
   WclGuildAttendance,
+  WclGuildReports,
   WclGuildZoneRanking,
   WclPlayerDetail,
   WclReportComposition,
 } from "./dto";
 import {
   GUILD_ATTENDANCE,
+  GUILD_REPORTS,
   GUILD_ZONE_RANKING,
   REPORT_COMPOSITION,
 } from "./queries";
@@ -119,6 +122,21 @@ export class WarcraftLogsGuildAdapter implements IGuildSource {
     }
 
     return [...byName.values()].map((e) => e.member);
+  }
+
+  async fetchReports(
+    guildId: number,
+    limit: number,
+  ): Promise<ExternalGuildReportRef[]> {
+    const res = await this.client.query<WclGuildReports>(GUILD_REPORTS, {
+      guildId,
+      limit,
+    });
+    return res.reportData.reports.data.map((r) => ({
+      reportCode: r.code,
+      startTime: new Date(r.startTime),
+      zone: r.zone?.name ?? "Unknown",
+    }));
   }
 
   async fetchZoneRanking(

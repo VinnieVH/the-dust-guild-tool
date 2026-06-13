@@ -23,6 +23,7 @@ describe("syncGuildRank", () => {
     const source: IGuildSource = {
       fetchAttendance: vi.fn(),
       fetchComposition: vi.fn(),
+      fetchReports: vi.fn(),
       fetchZoneRanking: vi.fn(async (_g: number, zoneId: number) => {
         fetched.push(zoneId);
         return ranking(zoneId);

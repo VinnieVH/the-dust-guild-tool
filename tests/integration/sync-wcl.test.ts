@@ -3,10 +3,12 @@ import { MainRole } from "@/lib/domain/enums";
 import type { ExternalReport } from "@/lib/domain/external";
 import type { IPerformanceSource } from "@/lib/integrations/interfaces";
 import {
+  autoIngestRepository,
   nightEngineRepository,
   speedRecordRepository,
   wclSyncRepository,
 } from "@/lib/repositories/wcl-repository";
+import { wclNightId } from "@/lib/services/auto-ingest-service";
 import { runNightEngineForNight } from "@/lib/services/run-night-engine-service";
 import { runSpeedRecords } from "@/lib/services/run-speed-record-service";
 import { syncWclReport } from "@/lib/services/sync-wcl-service";
@@ -26,15 +28,16 @@ class FakeSource implements IPerformanceSource {
 }
 
 function report(): ExternalReport {
-  // A small clean clear: 2 DPS, 1 healer, 1 tank, all present all 10 fights.
+  // A 9-of-10 night: 2 DPS, 1 healer, 1 tank, all present all 9 fights. Short of
+  // a clean sweep (SSC/TK = 10 bosses) so clean-sweep stays off in this test.
   const base = {
     deaths: 0, interrupts: 0, dispels: 0,
-    hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 10,
+    hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 9,
   };
   return {
     reportCode: CODE,
     zone: "SSC / TK",
-    totalBossFights: 10,
+    totalBossFights: 9, // SSC/TK is 10 bosses -> 9 is a partial (no clean sweep)
     clearMs: 3_600_000,
     performances: [
       { name: `${PFX}Topdps`, role: MainRole.DPS, parseAvg: 95, dpsOrHps: 2000, ...base, interrupts: 3 },
@@ -65,9 +68,20 @@ async function seed() {
   return { nightId: night.id, chars };
 }
 
+// The multi-zone test synthesizes a night via resolveNightForDate, keyed
+// `wcl:<date>` (NOT prefixed) — a far-future date so it can't collide with real
+// or other-test data. Cleanup must remove it by that exact key.
+const MULTI_DATE = "2099-03-14";
+const MULTI_NIGHT_ID = wclNightId(MULTI_DATE);
+
 async function cleanup() {
   const nights = await db.raidNight.findMany({
-    where: { raidHelperEventId: { startsWith: PFX } },
+    where: {
+      OR: [
+        { raidHelperEventId: { startsWith: PFX } },
+        { raidHelperEventId: MULTI_NIGHT_ID },
+      ],
+    },
     select: { id: true },
   });
   for (const n of nights) await db.raidNight.delete({ where: { id: n.id } });
@@ -105,7 +119,7 @@ describe("WCL ingestion -> engine (live DB)", () => {
     // Utility.
     expect(keys).toContain(`kick-commander:${chars[`${PFX}Topdps`]}`);
     expect(keys).toContain(`cleanse-crusader:${chars[`${PFX}Healer`]}`);
-    // Clean sweep (10/11? — SSC/TK is 11 bosses, we logged 10 => NOT a sweep).
+    // Clean sweep: SSC/TK is 10 bosses, we logged 9 => NOT a sweep.
     expect(keys.some((k) => k.startsWith("clean-sweep:"))).toBe(false);
     // Iron man: everyone (no deaths), all eligible.
     expect(keys.filter((k) => k.startsWith("iron-man:"))).toHaveLength(4);
@@ -226,6 +240,7 @@ describe("speed-record pass (live DB)", () => {
       data: { raidHelperEventId: `${PFX}evt-${suffix}`, title: `${PFX}night-${suffix}`, date: new Date(date) },
     });
     const rep: ExternalReport = { ...report(), reportCode: `${PFX}rep-${suffix}`, clearMs,
+      totalBossFights: 10, // a FULL SSC/TK clear (10 bosses) — only full clears set a record
       performances: [report().performances[0]] }; // one performer is enough
     // Point that single performer at the shared character so it resolves.
     rep.performances = [{ ...rep.performances[0], name: `${PFX}Topdps` }];
@@ -262,5 +277,82 @@ describe("speed-record pass (live DB)", () => {
     expect(records).toContain(nightA); // kept forever (was a record when it happened)
     expect(records).toContain(nightC);
     expect(records).not.toContain(nightB);
+  });
+});
+
+describe("multi-zone synthesized night (live DB)", () => {
+  // Gap the advisor flagged: one Brussels day with TWO full clears of DIFFERENT
+  // 25-man zones (SSC + Gruul), both auto-ingested onto the SAME `wcl:<date>`
+  // night via resolveNightForDate. Two distinct risks, tested separately so
+  // neither depends on the global speed-record ladder (which a running dev
+  // server may be repopulating — these tables aren't PFX-scopable).
+  function clear(suffix: string, zone: string, bosses: number, clearMs: number): ExternalReport {
+    const base = {
+      deaths: 0, interrupts: 0, dispels: 0,
+      hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: bosses,
+    };
+    return {
+      reportCode: `${PFX}mz-${suffix}`,
+      zone,
+      totalBossFights: bosses, // a FULL clear of that zone
+      clearMs,
+      performances: [
+        { name: `${PFX}Topdps`, role: MainRole.DPS, parseAvg: 95, dpsOrHps: 2000, ...base },
+        { name: `${PFX}Tank`, role: MainRole.TANK, parseAvg: 80, dpsOrHps: 500, ...base },
+      ],
+    };
+  }
+
+  it("resolves both reports to ONE night and the engine pools them into one crown", async () => {
+    const { chars } = await seed(); // creates characters (incl. Topdps/Tank)
+
+    // Both reports land on the same Brussels date -> same synthesized night.
+    const isoForTitle = new Date(`${MULTI_DATE}T19:00:00Z`);
+    const sscNight = await autoIngestRepository.resolveNightForDate(MULTI_DATE, isoForTitle);
+    const gmNight = await autoIngestRepository.resolveNightForDate(MULTI_DATE, isoForTitle);
+    expect(sscNight).toBe(gmNight); // deterministic: same id for both reports
+
+    // SSC/TK full clear (10 bosses) + Gruul/Mag full clear (3 bosses), same night.
+    await syncWclReport(new FakeSource(clear("ssc", "SSC / TK", 10, 160 * 60000)), autoIngestRepository, sscNight, `${PFX}mz-ssc`);
+    await syncWclReport(new FakeSource(clear("gm", "Gruul / Magtheridon", 3, 40 * 60000)), autoIngestRepository, gmNight, `${PFX}mz-gm`);
+
+    await runNightEngineForNight(nightEngineRepository, sscNight);
+
+    // Performances from BOTH reports are pooled, so the night yields exactly ONE
+    // deadliest crown (to the top parser) — not one per report/zone.
+    const deadliest = await db.achievementAward.findMany({
+      where: { raidNightId: sscNight, achievement: { key: "deadliest" } },
+      select: { characterId: true },
+    });
+    expect(deadliest).toHaveLength(1);
+    expect(deadliest[0].characterId).toBe(chars[`${PFX}Topdps`]);
+  });
+
+  it("speed-record write de-dups two zone-records on one night (no unique-key crash)", async () => {
+    // A night that sets a record in BOTH zones makes computeSpeedRecords emit two
+    // awards with the SAME raidNightId and overlapping present characters. Without
+    // de-dup, replaceSpeedRecordAwards inserts duplicate (achievement, char,
+    // night) rows -> unique-key violation -> the whole sync crashes. Drive that
+    // exact shape through the repository directly (independent of the global
+    // ladder) and assert: no throw + one award per character.
+    const { chars } = await seed();
+    const isoForTitle = new Date(`${MULTI_DATE}T19:00:00Z`);
+    const night = await autoIngestRepository.resolveNightForDate(MULTI_DATE, isoForTitle);
+    const achId = await speedRecordRepository.getSpeedRecordAchievementId();
+    expect(achId).not.toBeNull();
+
+    const top = chars[`${PFX}Topdps`];
+    const tank = chars[`${PFX}Tank`];
+    // Two awards (one per zone-record) sharing the night, overlapping characters.
+    await speedRecordRepository.replaceSpeedRecordAwards(achId!, [
+      { raidNightId: night, characterIds: [top, tank] },
+      { raidNightId: night, characterIds: [top, tank] },
+    ]);
+
+    const records = await db.achievementAward.findMany({
+      where: { raidNightId: night, achievement: { key: "new-speed-record" } },
+      select: { characterId: true },
+    });
+    expect(records.map((r) => r.characterId).sort()).toEqual([top, tank].sort());
   });
 });

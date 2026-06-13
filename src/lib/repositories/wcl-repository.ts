@@ -1,6 +1,11 @@
 import type { ReportPerformance } from "@/lib/domain/night-score";
 import { MainRole } from "@/lib/domain/enums";
 import { is25ManZone, zoneBossCount } from "@/lib/domain/wow";
+import {
+  brusselsDate,
+  wclNightId,
+  type AutoIngestStore,
+} from "@/lib/services/auto-ingest-service";
 import type { ResolvePerformanceStore } from "@/lib/services/resolve-performance-service";
 import type { NightEngineStore } from "@/lib/services/run-night-engine-service";
 import type { SpeedRecordStore } from "@/lib/services/run-speed-record-service";
@@ -24,11 +29,11 @@ export const wclSyncRepository: WclSyncStore = {
     return alias?.characterId ?? null;
   },
 
-  async upsertReport({ raidNightId, reportCode, zone, clearMs }) {
+  async upsertReport({ raidNightId, reportCode, zone, clearMs, bossKills }) {
     const report = await db.wclReport.upsert({
       where: { reportCode },
-      update: { zone, raidNightId, clearMs },
-      create: { reportCode, zone, raidNightId, clearMs },
+      update: { zone, raidNightId, clearMs, bossKills },
+      create: { reportCode, zone, raidNightId, clearMs, bossKills },
       select: { id: true },
     });
     return { wclReportId: report.id };
@@ -188,6 +193,7 @@ export const speedRecordRepository: SpeedRecordStore = {
         raidNightId: true,
         zone: true,
         clearMs: true,
+        bossKills: true,
         raidNight: { select: { date: true } },
         performances: {
           where: { characterId: { not: null } },
@@ -221,7 +227,11 @@ export const speedRecordRepository: SpeedRecordStore = {
         };
         byKey.set(key, entry);
       }
-      if (r.clearMs != null && r.clearMs > 0) {
+      // Only a FULL clear (every boss killed) sets a speed record — a fast
+      // partial must not. With auto-ingest, partial logs reach here too.
+      const fullClear =
+        r.bossKills != null && r.bossKills >= (zoneBossCount(r.zone) ?? Infinity);
+      if (fullClear && r.clearMs != null && r.clearMs > 0) {
         entry.clearMs =
           entry.clearMs == null ? r.clearMs : Math.min(entry.clearMs, r.clearMs);
       }
@@ -246,19 +256,70 @@ export const speedRecordRepository: SpeedRecordStore = {
   },
 
   async replaceSpeedRecordAwards(achievementId, awards) {
+    // De-dup by (character, night): one night can set records in TWO zones at
+    // once (e.g. a single evening full-clearing both Gruul/Mag and SSC), which
+    // computeSpeedRecords emits as two awards sharing a raidNightId with
+    // overlapping present characters. The award is "you were there when a record
+    // fell" — earned once per night regardless of how many zones fell — and the
+    // (achievement, character, night) unique key would otherwise reject the
+    // duplicate row and crash the whole sync.
+    const seen = new Set<string>();
+    const rows: Array<{ achievementId: string; characterId: string; raidNightId: string }> = [];
+    for (const a of awards) {
+      for (const characterId of a.characterIds) {
+        const key = `${characterId}::${a.raidNightId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        rows.push({ achievementId, characterId, raidNightId: a.raidNightId });
+      }
+    }
     await db.$transaction([
       // Owns this key across ALL nights: full delete + re-insert so a night that
       // is no longer a record (re-ingested slower) loses the award.
       db.achievementAward.deleteMany({ where: { achievementId } }),
-      db.achievementAward.createMany({
-        data: awards.flatMap((a) =>
-          a.characterIds.map((characterId) => ({
-            achievementId,
-            characterId,
-            raidNightId: a.raidNightId,
-          })),
-        ),
-      }),
+      db.achievementAward.createMany({ data: rows }),
     ]);
+  },
+};
+
+// Auto-ingest: reuses wclSyncRepository's report/performance methods, plus the
+// two auto-discovery-specific ones.
+export const autoIngestRepository: AutoIngestStore = {
+  ...wclSyncRepository,
+
+  async listIngestedReportCodes() {
+    const rows = await db.wclReport.findMany({ select: { reportCode: true } });
+    return new Set(rows.map((r) => r.reportCode));
+  },
+
+  async resolveNightForDate(date, isoForTitle) {
+    // 1) An existing Raid-Helper night on that Brussels date (one event/day).
+    //    Scan a ±1-day UTC window (a Brussels day spans <26h of UTC) and match
+    //    by computed Brussels date — cheap given how few nights exist.
+    const dayMs = 24 * 60 * 60 * 1000;
+    const around = new Date(isoForTitle.getTime());
+    const candidates = await db.raidNight.findMany({
+      where: {
+        date: { gte: new Date(around.getTime() - dayMs), lte: new Date(around.getTime() + dayMs) },
+        NOT: { raidHelperEventId: { startsWith: "wcl:" } },
+      },
+      select: { id: true, date: true },
+    });
+    const match = candidates.find((n) => brusselsDate(n.date) === date);
+    if (match) return match.id;
+
+    // 2) Otherwise upsert the synthesized night, keyed deterministically by
+    //    `wcl:<date>` so re-runs hit the same row (no duplicate nights).
+    const night = await db.raidNight.upsert({
+      where: { raidHelperEventId: wclNightId(date) },
+      update: {},
+      create: {
+        raidHelperEventId: wclNightId(date),
+        title: `Raid — ${date}`,
+        date: isoForTitle,
+      },
+      select: { id: true },
+    });
+    return night.id;
   },
 };

@@ -159,6 +159,19 @@ export interface WclReportComposition {
   };
 }
 
+export interface WclGuildReports {
+  reportData: {
+    reports: {
+      data: Array<{
+        code: string;
+        startTime: number;
+        endTime: number;
+        zone: { name: string } | null;
+      }>;
+    };
+  };
+}
+
 interface WclRankNumber {
   number: number | null;
   color?: string | null;

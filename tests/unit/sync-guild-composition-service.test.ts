@@ -28,6 +28,7 @@ function source(
       spy?.(code);
       return comp;
     }),
+    fetchReports: vi.fn(),
   };
 }
 

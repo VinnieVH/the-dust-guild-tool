@@ -26,7 +26,8 @@ export async function refreshGuildDataAction(
       success:
         `Refreshed attendance (${r.nights} nights, ${r.raiders} raiders, ` +
         `${r.milestones} milestones), ${r.zonesRanked} zone rankings, ` +
-        `and composition (${r.compositionMembers} raiders from the latest raid).`,
+        `composition (${r.compositionMembers} raiders), and ingested ` +
+        `${r.reportsIngested} new report(s).`,
     };
   } catch (err) {
     const message = err instanceof IntegrationError ? err.message : (err as Error).message;

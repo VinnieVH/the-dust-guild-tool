@@ -25,6 +25,7 @@ export interface WclSyncStore {
     reportCode: string;
     zone: string;
     clearMs: number;
+    bossKills: number;
   }): Promise<{ wclReportId: string }>;
 
   /**
@@ -86,6 +87,7 @@ export async function syncWclReport(
     reportCode: report.reportCode,
     zone: report.zone,
     clearMs: report.clearMs,
+    bossKills: report.totalBossFights, // kill-fight count = bosses killed
   });
 
   let matched = 0;

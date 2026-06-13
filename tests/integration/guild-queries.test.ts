@@ -28,13 +28,15 @@ describe("getZoneBests (live DB)", () => {
     const night = await db.raidNight.create({
       data: { raidHelperEventId: `${PFX}evt`, title: `${PFX}n`, date: new Date("2026-05-01") },
     });
-    // Two SSC reports (170, 155 min) -> best is 155. A faster Karazhan report
-    // (30 min) must be ignored (10-man content).
+    // SSC/TK = 10 bosses. Two FULL clears (170, 155 min, bossKills 10) -> best is
+    // 155. A faster SSC PARTIAL (90 min, only 4 bosses) must NOT win — full-clear
+    // gate. A faster Karazhan full clear (30 min) is ignored (10-man content).
     await db.wclReport.createMany({
       data: [
-        { reportCode: `${PFX}r1`, zone: "SSC / TK", clearMs: 170 * 60000, raidNightId: night.id },
-        { reportCode: `${PFX}r2`, zone: "SSC / TK", clearMs: 155 * 60000, raidNightId: night.id },
-        { reportCode: `${PFX}kara`, zone: "Karazhan", clearMs: 30 * 60000, raidNightId: night.id },
+        { reportCode: `${PFX}r1`, zone: "SSC / TK", clearMs: 170 * 60000, bossKills: 10, raidNightId: night.id },
+        { reportCode: `${PFX}r2`, zone: "SSC / TK", clearMs: 155 * 60000, bossKills: 10, raidNightId: night.id },
+        { reportCode: `${PFX}partial`, zone: "SSC / TK", clearMs: 90 * 60000, bossKills: 4, raidNightId: night.id },
+        { reportCode: `${PFX}kara`, zone: "Karazhan", clearMs: 30 * 60000, bossKills: 11, raidNightId: night.id },
       ],
     });
     await db.guildZoneRanking.create({

@@ -163,6 +163,11 @@ model WclReport {
   // Wall-clock clear duration (ms) for the New Speed Record achievement. Null
   // for an old report ingested before this column existed.
   clearMs      Int?
+  // Boss kills in this report (kill-fight count). With auto-ingestion we pull
+  // partial logs too, so fastest-clear + speed-record gate on a FULL clear
+  // (bossKills >= zoneBossCount); night-synthesis only needs >= 1. Null for old
+  // rows ingested before this column.
+  bossKills    Int?
   raidNight    RaidNight           @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
   performances PlayerPerformance[]
 

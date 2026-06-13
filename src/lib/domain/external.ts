@@ -102,6 +102,14 @@ export interface ExternalCompositionMember {
   maxItemLevel: number;
 }
 
+// A reference to one of the guild's WCL reports (for auto-discovery): enough to
+// decide whether to ingest it, without fetching its full detail.
+export interface ExternalGuildReportRef {
+  reportCode: string;
+  startTime: Date;
+  zone: string;
+}
+
 // Live guild standing for one zone (display-only).
 export interface ExternalZoneRanking {
   zoneId: number;

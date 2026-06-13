@@ -119,6 +119,23 @@ export const REPORT_COMPOSITION = /* GraphQL */ `
   }
 `;
 
+// The guild's report list (for auto-discovery): code + zone + wall-clock bounds.
+// One page; newest first. Verified live against guild 809103.
+export const GUILD_REPORTS = /* GraphQL */ `
+  query GuildReports($guildId: Int!, $limit: Int!) {
+    reportData {
+      reports(guildID: $guildId, limit: $limit) {
+        data {
+          code
+          startTime
+          endTime
+          zone { name }
+        }
+      }
+    }
+  }
+`;
+
 // Live world/region/server speed + progress ranks for one zone.
 export const GUILD_ZONE_RANKING = /* GraphQL */ `
   query GuildZoneRanking($guildId: Int!, $zoneId: Int!) {
