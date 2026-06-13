@@ -420,9 +420,19 @@ long as WCL resolution stays name-based.
 - `/(member)/profile`: trophy cabinet — all `achievement_awards` for the member's characters, grouped by achievement, with counts ("Deadliest ×4"), item-quality borders by category.
 - **Accept:** awards from Phase 4 fixtures render; empty state is friendly.
 
-### Step 5.3 — Season leaderboard
-- `/(member)/leaderboard`: award counts per character for a date range ("season" = configurable start date constant for v1), sortable, top-3 podium styling (gold/silver/bronze).
-- **Accept:** matches a hand-computed count from seeded data.
+### Step 5.3 — Leaderboard (Hall of Champions) — DONE
+- `/(member)/leaderboard`: NOT a ranked trophy ladder (deliberately — the user was
+  torn on internal call-out culture; see `docs/achievement-design.md`). Instead an
+  all-positive "Hall of Champions": one crown per achievement showing who holds it
+  most, plus a longest-active-streak board. Spreads crowns so many members are #1.
+- **Deviations from original plan:** no per-character ladder / gold-silver-bronze
+  podium, no season date-window (no season model exists; all-time for now). Holders
+  are aggregated to USER, alt-aware (a multi-alt owner is one holder); unclaimed
+  characters still appear by character name. Ties surface co-holders.
+- `src/lib/repositories/leaderboard-queries.ts` (`getLeaderboard`), unions per-char
+  awards + `User.currentStreak`. Covered by `tests/integration/leaderboard-queries.test.ts`
+  (alt-dedup, tie co-holders, unclaimed fallback, streak ordering — live Postgres).
+- **Accept:** ✅ matches hand-seeded counts; full suite green (156 unit + 37 integration).
 
 ### Step 5.4 — Discord webhook announcements
 - After the engine runs, POST an embed to `DISCORD_WEBHOOK_URL`: night title + winners per title with emoji. Feature-flag via env var presence; failures are logged, never block ingestion.
