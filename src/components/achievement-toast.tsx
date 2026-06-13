@@ -34,29 +34,30 @@ export function AchievementToast({
 }) {
   const reduceMotion = useReducedMotion();
   // Index of the banner currently shown; -1 = nothing to show (already seen, or
-  // no awards). The lazy initializer READS localStorage synchronously on the
-  // first client render (returns -1 during SSR, where `window` is absent), so
-  // there's no flash — the unseen check happens before the first paint. The
-  // matching WRITE (mark-as-seen) lives in an effect so it runs once after the
-  // commit, not during render (which would double-fire under StrictMode).
-  const [index, setIndex] = useState<number>(() => {
-    if (typeof window === "undefined" || awards.length === 0) return -1;
-    try {
-      return localStorage.getItem(seenKey(raidNightId, awards)) ? -1 : 0;
-    } catch {
-      return 0; // localStorage blocked (private mode) — show once anyway.
-    }
-  });
+  // no awards). MUST start at -1 so the server and the client's first render
+  // agree (localStorage is browser-only — reading it in the initializer would
+  // make the client want a banner the server didn't render → hydration
+  // mismatch). The reveal happens in a post-mount effect instead, which runs
+  // only after hydration. There's no visible flash: the toast is an overlay,
+  // not page content, so revealing it a tick after mount reads as an entrance.
+  const [index, setIndex] = useState(-1);
 
-  // Mark this award set seen once we've committed to showing it.
+  // Post-mount: if this award set is unseen on THIS browser, reveal it and mark
+  // it seen. Setting state in an effect is intentional here — it's the
+  // canonical "sync browser-only state after hydration" pattern, and gating on
+  // index===-1 plus the localStorage write keeps it idempotent under StrictMode.
   useEffect(() => {
-    if (index !== 0) return;
+    if (awards.length === 0) return;
+    const key = seenKey(raidNightId, awards);
     try {
-      localStorage.setItem(seenKey(raidNightId, awards), "1");
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
     } catch {
-      // localStorage unavailable — non-fatal; it just re-fires next visit.
+      // localStorage blocked (private mode) — show once anyway.
     }
-  }, [index, raidNightId, awards]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount reveal of a localStorage-gated overlay is hydration-safe by design (see note above)
+    setIndex(0);
+  }, [raidNightId, awards]);
 
   // Auto-advance through the awards, one banner at a time.
   useEffect(() => {
