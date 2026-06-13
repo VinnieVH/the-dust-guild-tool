@@ -17,6 +17,7 @@ import {
   buildReminderText,
 } from "@/lib/services/reserve-overview-service";
 import { auth } from "@/lib/auth";
+import { AchievementToast } from "@/components/achievement-toast";
 import { CopyReminderButton } from "./copy-reminder-button";
 import { SrMatrix } from "./sr-matrix";
 import { SrProgress } from "./sr-progress";
@@ -99,6 +100,7 @@ export default async function RaidNightPage({
 
   return (
     <PageContainer>
+      <AchievementToast raidNightId={night.id} awards={results} />
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-fel-300">{night.title}</h1>
         <p className="text-fel-200">{dateFmt.format(night.date)}</p>
