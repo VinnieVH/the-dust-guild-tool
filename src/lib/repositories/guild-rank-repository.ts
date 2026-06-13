@@ -4,14 +4,6 @@ import { db } from "@/lib/db";
 
 // Thin Prisma wrapper for the live guild zone rankings (display-only).
 export const guildRankRepository: GuildRankStore = {
-  async listLoggedZoneNames() {
-    const rows = await db.wclReport.findMany({
-      select: { zone: true },
-      distinct: ["zone"],
-    });
-    return rows.map((r) => r.zone);
-  },
-
   async upsertZoneRanking(r, fetchedAt) {
     await db.guildZoneRanking.upsert({
       where: { zoneId: r.zoneId },

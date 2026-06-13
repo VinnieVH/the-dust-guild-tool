@@ -1,15 +1,14 @@
 import type { ExternalZoneRanking } from "@/lib/domain/external";
-import { zoneId } from "@/lib/domain/wow";
+import { RAID_25_ZONES, zoneId } from "@/lib/domain/wow";
 import type { IGuildSource } from "@/lib/integrations/interfaces";
 
-// Refresh the live guild zone rankings (display-only, never awarded). For each
-// zone the guild has actually logged, fetch its world/region/server speed +
-// progress ranks and upsert one GuildZoneRanking row. Runs on the guild-level
-// refresh (alongside attendance), not per report.
+// Refresh the live guild zone rankings (display-only, never awarded) for EVERY
+// 25-man raid we care about — pulled straight from WCL's guild zoneRanking,
+// with NO dependency on whether we've ingested a report for that zone. (This is
+// the same data WCL shows in its own "Rankings" panel.) Runs on the guild-level
+// refresh / cron.
 
 export interface GuildRankStore {
-  /** Distinct zone NAMES the guild has logged (from wcl_reports). */
-  listLoggedZoneNames(): Promise<string[]>;
   /** Upsert one zone's ranking (by zoneId), stamping fetchedAt. */
   upsertZoneRanking(ranking: ExternalZoneRanking, fetchedAt: Date): Promise<void>;
 }
@@ -25,14 +24,15 @@ export async function syncGuildRank(
   guildId: number,
   now: Date,
 ): Promise<GuildRankResult> {
-  const zoneNames = await store.listLoggedZoneNames();
   let refreshed = 0;
   let skipped = 0;
 
-  for (const name of zoneNames) {
+  // The fixed set of 25-man raids — not "zones we've logged". Rankings exist on
+  // WCL regardless of our own ingestion.
+  for (const name of RAID_25_ZONES) {
     const id = zoneId(name);
     if (id == null) {
-      skipped += 1; // unknown zone name -> can't query its rank
+      skipped += 1; // no known WCL zone id -> can't query its rank
       continue;
     }
     const ranking = await guildSource.fetchZoneRanking(guildId, id);

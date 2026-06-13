@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/sync-raid-helper",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-guild",
+      "schedule": "0 * * * *"
     }
   ]
 }

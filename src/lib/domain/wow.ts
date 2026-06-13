@@ -56,15 +56,18 @@ export function zoneBossCount(zoneName: string): number | null {
   return ZONE_BOSS_COUNT[zoneName] ?? null;
 }
 
-// WCL TBC Classic zone NAME -> zone id, for guild rank queries (verified live
-// against the WCL API). SSC/TK reports as id 1056 in current logs; 1010 is the
-// older partition. We query the id the live reports use (1056).
+// WCL TBC Classic zone NAME -> zone id, for guild rank queries. The ids below
+// marked "verified" were read live from this guild's own reports (zone.id) +
+// confirmed to return a zoneRanking — NOT guessed. SSC/TK=1056, Gruul/Mag=1048,
+// Karazhan=1047 all confirmed. BT/Hyjal is UNVERIFIED (the guild hasn't raided
+// it yet, so no report carries its id) — its rank will read "—" until then;
+// fix the id from a live report once BT is logged.
 const ZONE_ID_BY_NAME: Record<string, number> = {
-  Karazhan: 1007,
-  "Gruul / Magtheridon": 1008,
-  "SSC / TK": 1056,
-  "BT / Hyjal": 1011,
-  "Zul'Aman": 1012,
+  Karazhan: 1047, // verified live
+  "Gruul / Magtheridon": 1048, // verified live
+  "SSC / TK": 1056, // verified live
+  "BT / Hyjal": 1049, // UNVERIFIED — best guess until BT is logged
+  "Zul'Aman": 1050, // UNVERIFIED
 };
 
 export function zoneId(zoneName: string): number | null {
