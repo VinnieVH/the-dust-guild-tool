@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { listRaidNightsForAdmin } from "@/lib/repositories/admin-queries";
 import { countUnmatchedReservations } from "@/lib/repositories/reservation-queries";
+import { countUnmatchedPerformances } from "@/lib/repositories/wcl-unmatched-queries";
 import { SyncEventsButton } from "./sync-events-button";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
@@ -12,10 +13,12 @@ const dateFmt = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default async function AdminRaidNightsPage() {
-  const [{ upcoming, past }, unmatched] = await Promise.all([
+  const [{ upcoming, past }, unmatchedRes, unmatchedPerf] = await Promise.all([
     listRaidNightsForAdmin(),
     countUnmatchedReservations(),
+    countUnmatchedPerformances(),
   ]);
+  const unmatched = unmatchedRes + unmatchedPerf;
   const hasNights = upcoming.length + past.length > 0;
 
   return (

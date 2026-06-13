@@ -7,11 +7,17 @@ import { isValidClass, isValidSpec } from "@/lib/domain/wow";
 import { db } from "@/lib/db";
 import { reservationResolveRepository } from "@/lib/repositories/reservation-repository";
 import {
+  nightEngineRepository,
+  resolvePerformanceRepository,
+} from "@/lib/repositories/wcl-repository";
+import {
   acceptSuggestion,
   createAndLinkReservation,
   ignoreReservation,
   linkReservation,
 } from "@/lib/services/resolve-reservation-service";
+import { linkPerformanceName } from "@/lib/services/resolve-performance-service";
+import { runNightEngineForNight } from "@/lib/services/run-night-engine-service";
 
 export type ResolveActionState = { error?: string; success?: string };
 
@@ -114,6 +120,40 @@ export async function createAndLinkAction(
   }
   revalidate();
   return { success: `Created ${input.name} and linked.` };
+}
+
+const linkPerfSchema = z.object({
+  rawName: z.string().min(1),
+  characterId: z.string().min(1),
+});
+
+// Link an unmatched WCL performance name to a character. Inserts an alias
+// (future syncs auto-resolve), backfills already-ingested rows, then re-runs the
+// affected nights' engines (a newly-matched top parser can change a crown).
+export async function linkPerformanceAction(
+  _prev: ResolveActionState,
+  formData: FormData,
+): Promise<ResolveActionState> {
+  const parsed = linkPerfSchema.safeParse({
+    rawName: formData.get("rawName"),
+    characterId: formData.get("characterId"),
+  });
+  if (!parsed.success) return { error: "Pick a character to link." };
+
+  const res = await linkPerformanceName(
+    resolvePerformanceRepository,
+    parsed.data.rawName,
+    parsed.data.characterId,
+  );
+  if (!res.ok) return { error: "Could not link — character missing." };
+
+  // Re-award the affected nights now that this name resolves.
+  for (const raidNightId of res.affectedRaidNightIds) {
+    await runNightEngineForNight(nightEngineRepository, raidNightId);
+    revalidatePath(`/raids/${raidNightId}`);
+  }
+  revalidate();
+  return { success: `Linked ${parsed.data.rawName} (${res.affectedRaidNightIds.length} night(s) re-scored).` };
 }
 
 // Character name search for the Link picker (server action, called from client).

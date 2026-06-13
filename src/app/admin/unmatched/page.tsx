@@ -2,10 +2,13 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { listUnmatchedReservations } from "@/lib/repositories/reservation-queries";
+import { listUnmatchedPerformances } from "@/lib/repositories/wcl-unmatched-queries";
 import { UnmatchedRow } from "./unmatched-row";
+import { WclUnmatchedRow } from "./wcl-unmatched-row";
 
 export default async function UnmatchedPage() {
   const rows = await listUnmatchedReservations();
+  const perfs = await listUnmatchedPerformances();
 
   return (
     <PageContainer>
@@ -34,6 +37,31 @@ export default async function UnmatchedPage() {
           ))}
         </ul>
       )}
+
+      <section className="mt-10">
+        <header className="mb-4">
+          <h2 className="text-lg font-semibold text-fel-300">
+            Unmatched Warcraft Logs names
+          </h2>
+          <p className="text-sm text-fel-200">
+            WCL report names that didn&apos;t resolve to a character. Linking
+            remembers the alias and re-scores that night&apos;s achievements.
+          </p>
+        </header>
+        {perfs.length === 0 ? (
+          <Card>
+            <p className="text-fel-200">No unmatched log names. 🎉</p>
+          </Card>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {perfs.map((p) => (
+              <li key={p.rawName}>
+                <WclUnmatchedRow perf={p} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="mt-6 text-sm">
         <Link href="/admin/raid-nights" className="text-fel-200 hover:text-fel-100">

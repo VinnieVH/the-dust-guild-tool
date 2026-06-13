@@ -1,6 +1,7 @@
 import type { ReportPerformance } from "@/lib/domain/night-score";
 import { MainRole } from "@/lib/domain/enums";
 import { zoneBossCount } from "@/lib/domain/wow";
+import type { ResolvePerformanceStore } from "@/lib/services/resolve-performance-service";
 import type { NightEngineStore } from "@/lib/services/run-night-engine-service";
 import type { WclSyncStore } from "@/lib/services/sync-wcl-service";
 import { db } from "@/lib/db";
@@ -135,5 +136,36 @@ export const nightEngineRepository: NightEngineStore = {
         data: awards.map((a) => ({ ...a, raidNightId })),
       }),
     ]);
+  },
+};
+
+export const resolvePerformanceRepository: ResolvePerformanceStore = {
+  async getCharacterName(characterId) {
+    const c = await db.character.findUnique({
+      where: { id: characterId },
+      select: { name: true },
+    });
+    return c?.name ?? null;
+  },
+
+  async ensureAlias(characterId, alias) {
+    await db.characterAlias.upsert({
+      where: { alias },
+      update: {},
+      create: { characterId, alias },
+    });
+  },
+
+  async backfillPerformances(rawName, characterId) {
+    // Which nights have unmatched rows for this name? (Capture before update.)
+    const affected = await db.playerPerformance.findMany({
+      where: { rawName, characterId: null },
+      select: { wclReport: { select: { raidNightId: true } } },
+    });
+    await db.playerPerformance.updateMany({
+      where: { rawName, characterId: null },
+      data: { characterId },
+    });
+    return [...new Set(affected.map((p) => p.wclReport.raidNightId))];
   },
 };
