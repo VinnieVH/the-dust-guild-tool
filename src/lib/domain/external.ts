@@ -77,6 +77,31 @@ export interface ExternalPerformance {
   fightsPresent: number;
 }
 
+// One logged raid night from the WCL guild attendance history.
+export interface ExternalGuildAttendance {
+  /** WCL report code for the night. */
+  reportCode: string;
+  startTime: Date;
+  zone: string;
+  /** Character names present (with WCL presence flag). Resolution to User +
+   *  alt-dedup happens above the adapter. */
+  players: Array<{ name: string; present: boolean }>;
+}
+
+// Live guild standing for one zone (display-only).
+export interface ExternalZoneRanking {
+  zoneId: number;
+  zoneName: string;
+  speedWorldRank: number | null;
+  speedRegionRank: number | null;
+  speedServerRank: number | null;
+  /** WoW item-quality tier of the speed rank ("rare", "epic"…) for theming. */
+  speedColor: string | null;
+  progWorldRank: number | null;
+  progRegionRank: number | null;
+  progServerRank: number | null;
+}
+
 export interface ExternalReport {
   reportCode: string;
   /** WCL zone name as reported by the API (e.g. "Serpentshrine Cavern",

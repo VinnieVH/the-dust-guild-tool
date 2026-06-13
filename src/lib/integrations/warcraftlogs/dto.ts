@@ -97,6 +97,60 @@ export interface WclEventStream<T> {
   nextPageTimestamp: number | null;
 }
 
+// --- Guild attendance + zone ranking (IGuildSource) ---
+
+export interface WclAttendancePlayer {
+  name: string;
+  /** WCL presence flag: 1 = present (2 = present-but-partial in some data). */
+  presence: number;
+}
+
+export interface WclAttendanceNight {
+  code: string;
+  /** Epoch ms. */
+  startTime: number;
+  zone: { name: string } | null;
+  players: WclAttendancePlayer[];
+}
+
+export interface WclGuildAttendance {
+  guildData: {
+    guild: {
+      attendance: {
+        total: number;
+        current_page: number;
+        last_page: number;
+        has_more_pages: boolean;
+        data: WclAttendanceNight[];
+      };
+    } | null;
+  };
+}
+
+interface WclRankNumber {
+  number: number | null;
+  color?: string | null;
+}
+
+export interface WclGuildZoneRanking {
+  guildData: {
+    guild: {
+      zoneRanking: {
+        progress: {
+          worldRank: WclRankNumber;
+          regionRank: WclRankNumber;
+          serverRank: WclRankNumber;
+        } | null;
+        speed: {
+          worldRank: WclRankNumber;
+          regionRank: WclRankNumber;
+          serverRank: WclRankNumber;
+        } | null;
+      } | null;
+    } | null;
+  };
+}
+
 export interface WclReportDetail {
   reportData: {
     report: {

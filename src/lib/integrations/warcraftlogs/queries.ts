@@ -78,6 +78,53 @@ export const REPORT_DETAIL = /* GraphQL */ `
   }
 `;
 
+// --- Guild-level queries (IGuildSource) ----------------------------------
+
+// One page of the guild's logged-raid attendance history (25/page, newest
+// first). Verified live against guild 809103.
+export const GUILD_ATTENDANCE = /* GraphQL */ `
+  query GuildAttendance($guildId: Int!, $page: Int!) {
+    guildData {
+      guild(id: $guildId) {
+        attendance(page: $page) {
+          total
+          current_page
+          last_page
+          has_more_pages
+          data {
+            code
+            startTime
+            zone { name }
+            players { name presence }
+          }
+        }
+      }
+    }
+  }
+`;
+
+// Live world/region/server speed + progress ranks for one zone.
+export const GUILD_ZONE_RANKING = /* GraphQL */ `
+  query GuildZoneRanking($guildId: Int!, $zoneId: Int!) {
+    guildData {
+      guild(id: $guildId) {
+        zoneRanking(zoneId: $zoneId) {
+          progress {
+            worldRank { number }
+            regionRank { number }
+            serverRank { number }
+          }
+          speed {
+            worldRank { number color }
+            regionRank { number }
+            serverRank { number }
+          }
+        }
+      }
+    }
+  }
+`;
+
 // Follow-up page query for a single event stream when nextPageTimestamp is set.
 export const EVENTS_PAGE = /* GraphQL */ `
   query EventsPage(
