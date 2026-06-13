@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageContainer } from "@/components/ui/page-container";
-import { classColor } from "@/lib/domain/wow";
+import { classColor, zoneDisplayName } from "@/lib/domain/wow";
 import {
   getComposition,
   getZoneBests,
@@ -114,7 +114,7 @@ export default async function GuildPage() {
                     style={{ borderColor: accent }}
                   >
                     <div className="min-w-[10rem]">
-                      <div className="font-semibold text-fel-100">{z.zoneName}</div>
+                      <div className="font-semibold text-fel-100">{zoneDisplayName(z.zoneName)}</div>
                       {z.speedColor && (
                         <span
                           className="text-xs font-semibold capitalize"

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   CLASS_SPECS,
+  RAID_25_ZONES,
   WOW_CLASSES,
   classColor,
   isValidClass,
   isValidSpec,
+  zoneDisplayName,
 } from "@/lib/domain/wow";
 
 describe("wow reference data", () => {
@@ -34,5 +36,23 @@ describe("wow reference data", () => {
       expect(classColor(c)).toMatch(/^#[0-9A-F]{6}$/i);
     }
     expect(Object.keys(CLASS_SPECS)).toEqual(WOW_CLASSES);
+  });
+});
+
+describe("zoneDisplayName", () => {
+  it("expands the terse WCL labels to full raid names", () => {
+    expect(zoneDisplayName("Gruul / Magtheridon")).toBe("Gruul's Lair / Magtheridon's Lair");
+    expect(zoneDisplayName("SSC / TK")).toBe("Serpentshrine Cavern / Tempest Keep");
+    expect(zoneDisplayName("BT / Hyjal")).toBe("Black Temple / Hyjal Summit");
+  });
+
+  it("falls back to the raw name for unknown zones (never hides one)", () => {
+    expect(zoneDisplayName("Sunwell Plateau")).toBe("Sunwell Plateau");
+  });
+
+  it("has a display name for every tracked 25-man zone", () => {
+    for (const z of RAID_25_ZONES) {
+      expect(zoneDisplayName(z)).not.toBe(z); // a real expansion exists
+    }
   });
 });

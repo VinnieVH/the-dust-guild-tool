@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { zoneDisplayName } from "@/lib/domain/wow";
 import type { AdminWclReport } from "@/lib/repositories/admin-queries";
 import {
   type WclActionState,
@@ -32,7 +33,7 @@ export function WclReportManager({
               className="flex items-center justify-between gap-3 rounded border border-fel-900 bg-legion-900 px-3 py-2"
             >
               <div className="min-w-0">
-                <span className="font-medium text-fel-100">{r.zone}</span>
+                <span className="font-medium text-fel-100">{zoneDisplayName(r.zone)}</span>
                 <a
                   href={reportUrl(r.reportCode)}
                   target="_blank"

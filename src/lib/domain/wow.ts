@@ -77,6 +77,24 @@ export function zoneId(zoneName: string): number | null {
   return ZONE_ID_BY_NAME[zoneName] ?? null;
 }
 
+// WCL returns terse combined zone labels ("Gruul / Magtheridon") that double as
+// our matching KEY everywhere (ingestion, ranks, boss counts) — so those keys
+// must stay byte-for-byte what WCL emits. This map is DISPLAY ONLY: the friendly
+// name shown in the UI. Keyed by the raw WCL label; unknown zones fall back to
+// the raw name (never hidden).
+const ZONE_DISPLAY_NAME: Record<string, string> = {
+  "Gruul / Magtheridon": "Gruul's Lair / Magtheridon's Lair",
+  "SSC / TK": "Serpentshrine Cavern / Tempest Keep",
+  "BT / Hyjal": "Black Temple / Hyjal Summit",
+  Karazhan: "Karazhan",
+  "Zul'Aman": "Zul'Aman",
+};
+
+/** Friendly UI label for a raw WCL zone name. Never used as a matching key. */
+export function zoneDisplayName(zoneName: string): string {
+  return ZONE_DISPLAY_NAME[zoneName] ?? zoneName;
+}
+
 // We are a 25-man raiding guild. TBC 10-man content (Karazhan, Zul'Aman) is run
 // in separate side-groups and must NOT count toward 25-man attendance streaks,
 // crowns, or speed records — a 25-man regular who skips Kara shouldn't lose a

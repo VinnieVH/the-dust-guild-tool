@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Role } from "@/lib/domain/enums";
+import { zoneDisplayName } from "@/lib/domain/wow";
 import { env } from "@/lib/env.server";
 import { IntegrationError } from "@/lib/integrations/errors";
 import {
@@ -78,7 +79,7 @@ export async function addWclReportAction(
 
     return {
       success:
-        `Ingested ${sync.performances} performers from ${sync.zone} ` +
+        `Ingested ${sync.performances} performers from ${zoneDisplayName(sync.zone)} ` +
         `(${sync.matched} matched, ${sync.unmatched} unmatched). ` +
         `Awarded ${engine.awards} achievements.`,
     };
