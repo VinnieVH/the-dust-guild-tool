@@ -1,3 +1,4 @@
+import { is25ManZone } from "@/lib/domain/wow";
 import type { IGuildSource } from "@/lib/integrations/interfaces";
 import { computeStreak, type StreakNight } from "./attendance-streak";
 
@@ -22,8 +23,17 @@ export interface AttendanceSyncStore {
    */
   resolveNamesToUsers(names: string[]): Promise<Map<string, string>>;
 
-  /** Persist one user's streak result: upsert each milestone (never revoked)
-   *  and set User.currentStreak. */
+  /**
+   * Clear ALL streak milestones before a recompute. The streak pass is the sole
+   * owner of streak_milestones and recomputes every user from the full filtered
+   * chronology, so milestones are fully derivable each run — wiping first makes
+   * the recompute authoritative (a milestone inflated by now-excluded 10-man
+   * nights is dropped, keeping the trophy consistent with the live streak).
+   */
+  resetMilestones(): Promise<void>;
+
+  /** Persist one user's streak result: insert each earned milestone and set
+   *  User.currentStreak. (Called after resetMilestones cleared the table.) */
   persistUserStreak(
     userId: string,
     currentStreak: number,
@@ -44,9 +54,15 @@ export async function syncAttendance(
 ): Promise<AttendanceSyncResult> {
   const history = await guildSource.fetchAttendance(guildId);
 
+  // 25-man only: drop 10-man side-content (Karazhan, ZA) BEFORE building the
+  // chronology, so they neither break a 25-man regular's streak (absent on a
+  // Kara night) nor grant one to a Kara-only attendee. The streak is defined
+  // over the guild's 25-man raid nights, not every logged report.
+  const raid25 = history.filter((n) => is25ManZone(n.zone));
+
   // Order oldest -> newest (WCL returns newest-first). Tie-break on reportCode
   // for a stable total order, mirroring the speed-record ordering rule.
-  const ordered = [...history].sort((a, b) => {
+  const ordered = [...raid25].sort((a, b) => {
     const d = a.startTime.getTime() - b.startTime.getTime();
     return d !== 0 ? d : a.reportCode < b.reportCode ? -1 : 1;
   });
@@ -72,6 +88,9 @@ export async function syncAttendance(
   // Every user that ever attended — the rows we compute streaks for.
   const allUsers = new Set<string>();
   for (const n of presentUsersByNight) for (const u of n.users) allUsers.add(u);
+
+  // Authoritative recompute: clear milestones, then re-derive from scratch.
+  await store.resetMilestones();
 
   let milestonesAwarded = 0;
   for (const userId of allUsers) {

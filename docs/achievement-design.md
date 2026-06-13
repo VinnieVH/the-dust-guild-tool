@@ -142,7 +142,19 @@ missing. Two surfaces, split exactly like guild rank-vs-record:
 49 nights of history for The Dust, paginated 25/page, newest first; each night has
 `code`, `startTime`, `zone`, `players[].name`, `players[].presence`). This is
 broader than per-report presence — it covers **every logged night automatically**,
-no officer pasting reports. Spans SSC/TK, Gruul/Mag, **and Karazhan**.
+no officer pasting reports.
+
+**25-man only (binding — signed off 2026-06-13).** We are a 25-man guild; 10-man
+side-content (Karazhan, Zul'Aman) runs in separate groups and MUST NOT count. The
+streak chronology is filtered to 25-man zones (`is25ManZone` in `wow.ts`,
+allowlist: SSC/TK, Gruul/Mag, BT/Hyjal) BEFORE computing — otherwise a 25-man
+regular's streak breaks on every Kara night they skip, and a Kara-only attendee
+earns a streak they shouldn't. Live impact: the feed's 49 nights drop to 22
+counted (Kara was 27 of them). Same allowlist also gates speed records and rejects
+non-25-man reports at ingest (`syncWclReport`), so 10-man content never appears in
+crowns or records either. The milestone recompute is **authoritative** — it wipes
+`streak_milestones` and re-derives each run, so milestones inflated by the old
+Kara-inclusive count are corrected, not grandfathered.
 
 **Counted per User, NOT per character (binding — the alt rule).** WCL attendance
 is keyed by character *name*, so an alt is a separate row. The streak engine
@@ -156,9 +168,8 @@ same limitation as elsewhere.
   The streak is "consecutive *logged* nights attended", not "every raid that ever
   happened" — an unlogged night is invisible, which is acceptable and documented.
 - A "miss" = a counted night where the User was absent. Current streak = the run of
-  most-recent consecutive attended nights. Any guild raid night counts (not
-  per-zone). Future "only signed-up nights" / per-zone variants are filters on the
-  same data, not a redesign.
+  most-recent consecutive attended nights. Only **25-man** raid nights count (see the
+  25-man-only rule above); 10-man side-content is filtered out before counting.
 
 **Determinism (shares the New Speed Record rule):** current-streak and
 milestone-crossing are a **pure function of presence ordered by raid DATE**, not

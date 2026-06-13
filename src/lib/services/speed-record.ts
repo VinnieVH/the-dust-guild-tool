@@ -1,3 +1,5 @@
+import { is25ManZone } from "@/lib/domain/wow";
+
 // New Speed Record — a GUILD achievement, but history-dependent, so it lives in
 // a recompute-from-all-nights pass, NOT the per-night engine (which can't see
 // prior nights and whose delete-by-night would clobber a record awarded on a
@@ -32,9 +34,14 @@ export interface SpeedRecordAward {
  * characters present (to be awarded `new-speed-record`). Pure & order-independent.
  */
 export function computeSpeedRecords(nights: ZoneNight[]): SpeedRecordAward[] {
+  // 25-man only: a 10-man clear (Karazhan, ZA) is never a guild speed record.
+  // Filtering here protects against any pre-existing 10-man rows in the DB, not
+  // just newly-ingested ones the sync guard now blocks.
+  const eligible = nights.filter((n) => is25ManZone(n.zone));
+
   // Sort by date ascending; tie-break on raidNightId so the order is total and
   // stable (two raids the same day — the earlier-id one is "first").
-  const ordered = [...nights].sort((a, b) => {
+  const ordered = [...eligible].sort((a, b) => {
     const d = a.date.getTime() - b.date.getTime();
     return d !== 0 ? d : a.raidNightId < b.raidNightId ? -1 : 1;
   });

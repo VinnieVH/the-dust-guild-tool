@@ -41,10 +41,19 @@ describe("computeSpeedRecords", () => {
   it("tracks records per zone independently", () => {
     const awards = computeSpeedRecords([
       night({ raidNightId: "ssc1", zone: "SSC / TK", date: new Date("2026-01-01"), clearMs: 60 * 60000 }),
-      night({ raidNightId: "kara1", zone: "Karazhan", date: new Date("2026-01-02"), clearMs: 90 * 60000 }),
+      night({ raidNightId: "gm1", zone: "Gruul / Magtheridon", date: new Date("2026-01-02"), clearMs: 90 * 60000 }),
     ]);
-    // Each zone's first night is its own record.
-    expect(awards.map((a) => a.raidNightId).sort()).toEqual(["kara1", "ssc1"]);
+    // Each (25-man) zone's first night is its own record.
+    expect(awards.map((a) => a.raidNightId).sort()).toEqual(["gm1", "ssc1"]);
+  });
+
+  it("excludes 10-man content (Karazhan) — never a guild speed record", () => {
+    const awards = computeSpeedRecords([
+      night({ raidNightId: "ssc1", zone: "SSC / TK", date: new Date("2026-01-01"), clearMs: 60 * 60000 }),
+      night({ raidNightId: "kara1", zone: "Karazhan", date: new Date("2026-01-02"), clearMs: 30 * 60000 }),
+    ]);
+    // Kara is filtered out entirely, even though its time is faster.
+    expect(awards.map((a) => a.raidNightId)).toEqual(["ssc1"]);
   });
 
   it("awards every character present on a record night", () => {

@@ -1,4 +1,6 @@
 import type { ExternalPerformance } from "@/lib/domain/external";
+import { is25ManZone } from "@/lib/domain/wow";
+import { IntegrationError } from "@/lib/integrations/errors";
 import type { IPerformanceSource } from "@/lib/integrations/interfaces";
 
 // Ingest one WCL report into the DB: fetch it, resolve each performer's name to
@@ -68,6 +70,16 @@ export async function syncWclReport(
   reportCode: string,
 ): Promise<WclSyncResult> {
   const report = await source.fetchReport(reportCode);
+
+  // 25-man guild: reject 10-man content (Karazhan, ZA) at the door so it never
+  // pollutes crowns or speed records. Thrown before any write — nothing about a
+  // rejected report is persisted.
+  if (!is25ManZone(report.zone)) {
+    throw new IntegrationError(
+      "warcraftlogs",
+      `${report.zone} is not 25-man content — only 25-man raids count (Karazhan and other 10-man content are excluded).`,
+    );
+  }
 
   const { wclReportId } = await store.upsertReport({
     raidNightId,

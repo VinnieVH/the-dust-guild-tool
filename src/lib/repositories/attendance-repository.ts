@@ -33,6 +33,10 @@ export const attendanceRepository: AttendanceSyncStore = {
     return out;
   },
 
+  async resetMilestones() {
+    await db.streakMilestone.deleteMany({});
+  },
+
   async persistUserStreak(userId, currentStreak, milestones) {
     // Pre-resolve achievement ids for the streak keys + map the crossing report
     // code to a raidNight when one was ingested (optional link).

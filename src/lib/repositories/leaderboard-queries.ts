@@ -20,6 +20,15 @@ import { db } from "@/lib/db";
 //   - Unclaimed characters (characterId-keyed award on a Character with no
 //     userId) still count — we fall back to the character itself as the holder
 //     so an unlinked top parser isn't silently dropped from the hall.
+//
+// 25-MAN SCOPE: this reads achievement_awards with NO zone filter. That's
+// deliberate — awards are gated UPSTREAM at ingest (syncWclReport rejects
+// non-25-man reports), which is the single source filter for crowns. profile-
+// queries + night-results read the same rows the same way, so filtering only
+// here would create a worse inconsistency (a Kara crown on a profile but not the
+// leaderboard). The guard makes new 10-man awards impossible; this depends on no
+// pre-guard 10-man report existing in the DB (verified clean). If one ever did,
+// the fix is a one-time award cleanup by night zone, not a per-query filter.
 
 export interface ChampionHolder {
   /** Display name: the user's Discord name, or the character name if unclaimed. */

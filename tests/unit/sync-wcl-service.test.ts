@@ -7,7 +7,7 @@ import { syncWclReport, type WclSyncStore } from "@/lib/services/sync-wcl-servic
 function report(over: Partial<ExternalReport> = {}): ExternalReport {
   return {
     reportCode: "RPT",
-    zone: "Karazhan",
+    zone: "SSC / TK",
     totalBossFights: 2,
     clearMs: 3_600_000,
     performances: [
@@ -72,5 +72,20 @@ describe("syncWclReport", () => {
     expect(vex.hadFlask).toBe(true);
     expect(vex.hadFood).toBe(true);
     expect(vex.interrupts).toBe(1);
+  });
+
+  it("rejects 10-man content (Karazhan) before writing anything", async () => {
+    const source: IPerformanceSource = {
+      fetchReport: vi.fn(async () => report({ zone: "Karazhan" })),
+    };
+    const { store, captured } = fakeStore({ Vex: "char-vex" });
+    const upsert = vi.spyOn(store, "upsertReport");
+
+    await expect(syncWclReport(source, store, "night-1", "RPT")).rejects.toThrow(
+      /not 25-man/i,
+    );
+    // Nothing persisted — guard fires before the upsert.
+    expect(upsert).not.toHaveBeenCalled();
+    expect(captured.rows).toBeNull();
   });
 });

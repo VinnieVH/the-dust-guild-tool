@@ -35,10 +35,12 @@ describe("getLeaderboard (live DB)", () => {
   it("collapses a user's alts into one holder, detects ties, and keeps unclaimed chars", async () => {
     // Alice owns two alts; Bob owns one. Carol's char is unclaimed.
     const alice = await db.user.create({
-      data: { discordId: `${PFX}alice`, discordName: "Alice", role: Role.MEMBER, currentStreak: 12 },
+      // Streaks set absurdly high so this test's users top the global `take: 10`
+      // board regardless of any real attendance data already in the dev DB.
+      data: { discordId: `${PFX}alice`, discordName: "Alice", role: Role.MEMBER, currentStreak: 9012 },
     });
     const bob = await db.user.create({
-      data: { discordId: `${PFX}bob`, discordName: "Bob", role: Role.MEMBER, currentStreak: 5 },
+      data: { discordId: `${PFX}bob`, discordName: "Bob", role: Role.MEMBER, currentStreak: 9005 },
     });
 
     const aliceMain = await db.character.create({
@@ -95,11 +97,12 @@ describe("getLeaderboard (live DB)", () => {
     const ironman = champions.find((c) => c.key === "iron-man")!;
     expect(ironman.holders).toHaveLength(0);
 
-    // Streaks ordered by currentStreak desc, only > 0.
+    // Streaks ordered by currentStreak desc, only > 0. Our two top the board;
+    // assert relative order (other real users may sit elsewhere in the list).
     const ours = streakLeaders.filter((s) => s.name === "Alice" || s.name === "Bob");
     expect(ours).toEqual([
-      { name: "Alice", streak: 12 },
-      { name: "Bob", streak: 5 },
+      { name: "Alice", streak: 9012 },
+      { name: "Bob", streak: 9005 },
     ]);
   });
 });

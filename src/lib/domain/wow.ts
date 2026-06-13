@@ -70,3 +70,22 @@ const ZONE_ID_BY_NAME: Record<string, number> = {
 export function zoneId(zoneName: string): number | null {
   return ZONE_ID_BY_NAME[zoneName] ?? null;
 }
+
+// We are a 25-man raiding guild. TBC 10-man content (Karazhan, Zul'Aman) is run
+// in separate side-groups and must NOT count toward 25-man attendance streaks,
+// crowns, or speed records — a 25-man regular who skips Kara shouldn't lose a
+// streak, and a Kara-only attendee shouldn't earn one. ALLOWLIST the known
+// 25-man zones (not a denylist) so any future/unknown zone is excluded by
+// default rather than silently counted. Keyed on the COMBINED WCL labels the
+// attendance + report feeds actually return (verified live: the feed emits
+// "Gruul / Magtheridon", "SSC / TK", "Karazhan" — not split zone names).
+const RAID_25_ZONES: ReadonlySet<string> = new Set([
+  "SSC / TK",
+  "Gruul / Magtheridon",
+  "BT / Hyjal",
+]);
+
+/** True when a WCL zone name is 25-man content this guild raids together. */
+export function is25ManZone(zoneName: string): boolean {
+  return RAID_25_ZONES.has(zoneName);
+}
