@@ -357,7 +357,19 @@ long as WCL resolution stays name-based.
 
 ---
 
-## Phase 4 — Warcraft Logs + achievements
+## Phase 4 — Warcraft Logs + achievements ← DONE (2026-06-13)
+
+> **Implemented.** WCL v2 adapter (report + guild), night scoring, the
+> achievement engine (10 per-night rules), the New Speed Record history pass,
+> per-User attendance streaks, live guild zone rankings, officer ingestion +
+> unmatched-queue UI, and member surfacing (raid-night results, guild dashboard,
+> profile trophy cabinet). The full award set + culture decisions live in
+> `docs/achievement-design.md` (the binding spec — all-positive default,
+> outlier-gated Floor Inspector, 9 personal + 3 guild awards + streak milestones).
+> Deviations from the steps below: zone is a free string (not the SSC|TK enum);
+> attendance is a per-User streak from the WCL guild attendance API (not a simple
+> per-night flag); guild rank is display-only (never awarded). All verified live
+> against report NYh79GKXvVqMA6rW + guild The Dust (809103).
 
 ### Step 4.1 — WCL adapter
 - OAuth2 client-credentials token helper with in-memory expiry cache (`warcraftlogs/auth.ts`).
