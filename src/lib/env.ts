@@ -19,6 +19,7 @@ const schema = z.object({
   RAID_HELPER_SERVER_ID: z.string().optional(), // Phase 2
   WCL_CLIENT_ID: z.string().optional(), // Phase 4
   WCL_CLIENT_SECRET: z.string().optional(), // Phase 4
+  WCL_GUILD_ID: z.coerce.number().int().optional(), // Phase 4 (guild rank + attendance)
   CRON_SECRET: z.string().optional(), // Phase 2 (cron guard)
   DISCORD_WEBHOOK_URL: z.string().url().optional(), // Phase 5
 

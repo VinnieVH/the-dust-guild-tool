@@ -39,3 +39,19 @@ export function isValidSpec(wowClass: string, spec: string): boolean {
 export function classColor(wowClass: string): string {
   return CLASS_COLORS[wowClass] ?? "#FFFFFF";
 }
+
+// Boss counts per WCL zone NAME (TBC), for the Clean Sweep guild achievement
+// ("all bosses killed"). Keyed by the zone name WCL reports — note SSC/TK is a
+// combined WCL zone (one "clear" spans both raids). Unknown zones return null,
+// and Clean Sweep simply won't fire for them (safe default).
+const ZONE_BOSS_COUNT: Record<string, number> = {
+  "SSC / TK": 11, // Serpentshrine (6) + The Eye (5)
+  Karazhan: 11,
+  "Gruul / Magtheridon": 3, // Gruul (2) + Magtheridon (1)
+  "BT / Hyjal": 14, // Black Temple (9) + Hyjal (5)
+  "Zul'Aman": 6,
+};
+
+export function zoneBossCount(zoneName: string): number | null {
+  return ZONE_BOSS_COUNT[zoneName] ?? null;
+}
