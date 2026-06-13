@@ -11,6 +11,8 @@ const META = {
   reportData: {
     report: {
       code: "PAGED",
+      startTime: 0,
+      endTime: 3_600_000,
       zone: { id: 1, name: "Karazhan" },
       masterData: {
         actors: [
@@ -104,6 +106,8 @@ describe("WarcraftLogsAdapter — event pagination", () => {
           reportData: {
             report: {
               code: "WIPES",
+              startTime: 0,
+              endTime: 1000,
               zone: { id: 1, name: "Gruul's Lair" },
               masterData: { actors: [] },
               fights: [

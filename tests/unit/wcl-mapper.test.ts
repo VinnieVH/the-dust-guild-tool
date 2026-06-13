@@ -21,6 +21,8 @@ function meta(
     reportData: {
       report: {
         code: "ABC",
+        startTime: 1_000_000,
+        endTime: 4_600_000, // 1h clear
         zone: { id: 1, name: opts.zone ?? "Karazhan" },
         masterData: { actors: opts.actors ?? [] },
         fights: (opts.fights ?? []).map((f) => ({

@@ -28,6 +28,12 @@ describe("WCL mapper (recorded fixture)", () => {
     expect(report.totalBossFights).toBe(10);
   });
 
+  it("computes clear duration from report start/end (the speed-record metric)", () => {
+    // ~170.8 min for this recorded SSC/TK clear.
+    expect(report.clearMs).toBeGreaterThan(0);
+    expect(Math.round(report.clearMs / 60000)).toBe(171);
+  });
+
   it("produces one performance per distinct character", () => {
     expect(report.performances).toHaveLength(25);
     const names = new Set(report.performances.map((p) => p.name));

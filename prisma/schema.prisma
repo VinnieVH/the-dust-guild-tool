@@ -160,6 +160,9 @@ model WclReport {
   // break on the first un-listed zone. Mirrors the softres-sheet-named
   // deviation (officer-visible label, not a fixed set).
   zone         String
+  // Wall-clock clear duration (ms) for the New Speed Record achievement. Null
+  // for an old report ingested before this column existed.
+  clearMs      Int?
   raidNight    RaidNight           @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
   performances PlayerPerformance[]
 

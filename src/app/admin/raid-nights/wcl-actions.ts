@@ -11,9 +11,11 @@ import {
 } from "@/lib/integrations/warcraftlogs/adapter";
 import {
   nightEngineRepository,
+  speedRecordRepository,
   wclSyncRepository,
 } from "@/lib/repositories/wcl-repository";
 import { runNightEngineForNight } from "@/lib/services/run-night-engine-service";
+import { runSpeedRecords } from "@/lib/services/run-speed-record-service";
 import { syncWclReport } from "@/lib/services/sync-wcl-service";
 import { auth } from "@/lib/auth";
 
@@ -66,6 +68,10 @@ export async function addWclReportAction(
       parsed.data.raidNightId,
     );
 
+    // Recompute speed records across all history (a new clear time may set a
+    // record, or re-ingesting slower may drop one). Owns new-speed-record.
+    await runSpeedRecords(speedRecordRepository);
+
     revalidatePath(`/admin/raid-nights/${parsed.data.raidNightId}`);
     revalidatePath(`/raids/${parsed.data.raidNightId}`);
     revalidatePath("/admin/unmatched");
@@ -105,6 +111,7 @@ export async function removeWclReportAction(
 
   await wclSyncRepository.deleteReport(parsed.data.reportId);
   await runNightEngineForNight(nightEngineRepository, parsed.data.raidNightId);
+  await runSpeedRecords(speedRecordRepository);
 
   revalidatePath(`/admin/raid-nights/${parsed.data.raidNightId}`);
   revalidatePath(`/raids/${parsed.data.raidNightId}`);

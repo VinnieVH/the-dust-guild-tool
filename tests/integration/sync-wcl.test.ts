@@ -4,9 +4,11 @@ import type { ExternalReport } from "@/lib/domain/external";
 import type { IPerformanceSource } from "@/lib/integrations/interfaces";
 import {
   nightEngineRepository,
+  speedRecordRepository,
   wclSyncRepository,
 } from "@/lib/repositories/wcl-repository";
 import { runNightEngineForNight } from "@/lib/services/run-night-engine-service";
+import { runSpeedRecords } from "@/lib/services/run-speed-record-service";
 import { syncWclReport } from "@/lib/services/sync-wcl-service";
 import { db } from "@/lib/db";
 
@@ -33,6 +35,7 @@ function report(): ExternalReport {
     reportCode: CODE,
     zone: "SSC / TK",
     totalBossFights: 10,
+    clearMs: 3_600_000,
     performances: [
       { name: `${PFX}Topdps`, role: MainRole.DPS, parseAvg: 95, dpsOrHps: 2000, ...base, interrupts: 3 },
       { name: `${PFX}Lowdps`, role: MainRole.DPS, parseAvg: 60, dpsOrHps: 1000, ...base },
@@ -63,8 +66,11 @@ async function seed() {
 }
 
 async function cleanup() {
-  const night = await db.raidNight.findUnique({ where: { raidHelperEventId: `${PFX}evt` }, select: { id: true } });
-  if (night) await db.raidNight.delete({ where: { id: night.id } });
+  const nights = await db.raidNight.findMany({
+    where: { raidHelperEventId: { startsWith: PFX } },
+    select: { id: true },
+  });
+  for (const n of nights) await db.raidNight.delete({ where: { id: n.id } });
   await db.character.deleteMany({ where: { name: { startsWith: PFX } } });
 }
 
@@ -144,5 +150,51 @@ describe("WCL ingestion -> engine (live DB)", () => {
       where: { raidNightId: nightId, achievement: { key: "new-speed-record" } },
     });
     expect(survived).not.toBeNull();
+  });
+});
+
+describe("speed-record pass (live DB)", () => {
+  // Seed a second SSC/TK night and ingest a report with a chosen clear time.
+  async function seedNightWithClear(suffix: string, date: string, clearMs: number, charId: string) {
+    const night = await db.raidNight.create({
+      data: { raidHelperEventId: `${PFX}evt-${suffix}`, title: `${PFX}night-${suffix}`, date: new Date(date) },
+    });
+    const rep: ExternalReport = { ...report(), reportCode: `${PFX}rep-${suffix}`, clearMs,
+      performances: [report().performances[0]] }; // one performer is enough
+    // Point that single performer at the shared character so it resolves.
+    rep.performances = [{ ...rep.performances[0], name: `${PFX}Topdps` }];
+    await syncWclReport(new FakeSource(rep), wclSyncRepository, night.id, rep.reportCode);
+    void charId;
+    return night.id;
+  }
+
+  it("awards new-speed-record only to faster-than-prior nights, and moves it on a faster re-clear", async () => {
+    const { chars } = await seed(); // creates the base night + characters
+    const top = chars[`${PFX}Topdps`];
+
+    // Night A (earlier, 60 min) and Night B (later, 70 min — slower).
+    const nightA = await seedNightWithClear("A", "2026-05-01T18:00:00Z", 60 * 60000, top);
+    const nightB = await seedNightWithClear("B", "2026-05-08T18:00:00Z", 70 * 60000, top);
+
+    await runSpeedRecords(speedRecordRepository);
+
+    const recordNightsAfter = async () =>
+      (await db.achievementAward.findMany({
+        where: { achievement: { key: "new-speed-record" } },
+        select: { raidNightId: true },
+      })).map((r) => r.raidNightId);
+
+    // Only Night A is a record (B was slower).
+    let records = await recordNightsAfter();
+    expect(records).toContain(nightA);
+    expect(records).not.toContain(nightB);
+
+    // A later, FASTER night C (50 min) becomes a new record.
+    const nightC = await seedNightWithClear("C", "2026-05-15T18:00:00Z", 50 * 60000, top);
+    await runSpeedRecords(speedRecordRepository);
+    records = await recordNightsAfter();
+    expect(records).toContain(nightA); // kept forever (was a record when it happened)
+    expect(records).toContain(nightC);
+    expect(records).not.toContain(nightB);
   });
 });

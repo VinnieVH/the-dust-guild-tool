@@ -9,6 +9,7 @@ function report(over: Partial<ExternalReport> = {}): ExternalReport {
     reportCode: "RPT",
     zone: "Karazhan",
     totalBossFights: 2,
+    clearMs: 3_600_000,
     performances: [
       {
         name: "Vex", role: MainRole.DPS, parseAvg: 90, dpsOrHps: 1000,

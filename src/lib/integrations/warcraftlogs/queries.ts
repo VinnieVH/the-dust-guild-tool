@@ -12,6 +12,8 @@ export const REPORT_META = /* GraphQL */ `
     reportData {
       report(code: $code) {
         code
+        startTime
+        endTime
         zone {
           id
           name

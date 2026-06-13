@@ -202,6 +202,9 @@ export function mapReport(
     reportCode: report.code,
     zone: report.zone?.name ?? "Unknown",
     totalBossFights,
+    // Wall-clock clear duration (whole-run). Guarded against missing/inverted
+    // bounds — a non-positive value means "no usable time" downstream.
+    clearMs: Math.max(0, report.endTime - report.startTime),
     performances,
   };
 }

@@ -3,6 +3,7 @@ import { MainRole } from "@/lib/domain/enums";
 import { zoneBossCount } from "@/lib/domain/wow";
 import type { ResolvePerformanceStore } from "@/lib/services/resolve-performance-service";
 import type { NightEngineStore } from "@/lib/services/run-night-engine-service";
+import type { SpeedRecordStore } from "@/lib/services/run-speed-record-service";
 import type { WclSyncStore } from "@/lib/services/sync-wcl-service";
 import { db } from "@/lib/db";
 
@@ -23,11 +24,11 @@ export const wclSyncRepository: WclSyncStore = {
     return alias?.characterId ?? null;
   },
 
-  async upsertReport({ raidNightId, reportCode, zone }) {
+  async upsertReport({ raidNightId, reportCode, zone, clearMs }) {
     const report = await db.wclReport.upsert({
       where: { reportCode },
-      update: { zone, raidNightId },
-      create: { reportCode, zone, raidNightId },
+      update: { zone, raidNightId, clearMs },
+      create: { reportCode, zone, raidNightId, clearMs },
       select: { id: true },
     });
     return { wclReportId: report.id };
@@ -167,5 +168,87 @@ export const resolvePerformanceRepository: ResolvePerformanceStore = {
       data: { characterId },
     });
     return [...new Set(affected.map((p) => p.wclReport.raidNightId))];
+  },
+};
+
+export const speedRecordRepository: SpeedRecordStore = {
+  async getZoneNights() {
+    const reports = await db.wclReport.findMany({
+      select: {
+        raidNightId: true,
+        zone: true,
+        clearMs: true,
+        raidNight: { select: { date: true } },
+        performances: {
+          where: { characterId: { not: null } },
+          select: { characterId: true },
+        },
+      },
+    });
+
+    // Aggregate by (raidNight, zone): a night's clear for a zone = the fastest
+    // report's time; present = distinct matched characters across its reports.
+    const byKey = new Map<
+      string,
+      {
+        raidNightId: string;
+        zone: string;
+        date: Date;
+        clearMs: number | null;
+        present: Set<string>;
+      }
+    >();
+    for (const r of reports) {
+      const key = `${r.raidNightId}::${r.zone}`;
+      let entry = byKey.get(key);
+      if (!entry) {
+        entry = {
+          raidNightId: r.raidNightId,
+          zone: r.zone,
+          date: r.raidNight.date,
+          clearMs: null,
+          present: new Set(),
+        };
+        byKey.set(key, entry);
+      }
+      if (r.clearMs != null && r.clearMs > 0) {
+        entry.clearMs =
+          entry.clearMs == null ? r.clearMs : Math.min(entry.clearMs, r.clearMs);
+      }
+      for (const p of r.performances) if (p.characterId) entry.present.add(p.characterId);
+    }
+
+    return [...byKey.values()].map((e) => ({
+      raidNightId: e.raidNightId,
+      date: e.date,
+      zone: e.zone,
+      clearMs: e.clearMs,
+      presentCharacterIds: [...e.present],
+    }));
+  },
+
+  async getSpeedRecordAchievementId() {
+    const a = await db.achievement.findUnique({
+      where: { key: "new-speed-record" },
+      select: { id: true },
+    });
+    return a?.id ?? null;
+  },
+
+  async replaceSpeedRecordAwards(achievementId, awards) {
+    await db.$transaction([
+      // Owns this key across ALL nights: full delete + re-insert so a night that
+      // is no longer a record (re-ingested slower) loses the award.
+      db.achievementAward.deleteMany({ where: { achievementId } }),
+      db.achievementAward.createMany({
+        data: awards.flatMap((a) =>
+          a.characterIds.map((characterId) => ({
+            achievementId,
+            characterId,
+            raidNightId: a.raidNightId,
+          })),
+        ),
+      }),
+    ]);
   },
 };

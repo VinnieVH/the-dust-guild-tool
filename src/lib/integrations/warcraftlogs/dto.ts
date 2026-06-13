@@ -23,6 +23,9 @@ export interface WclReportMeta {
   reportData: {
     report: {
       code: string;
+      /** Report wall-clock bounds (epoch ms). end - start = clear duration. */
+      startTime: number;
+      endTime: number;
       zone: { id: number; name: string } | null;
       masterData: { actors: WclActor[] };
       fights: WclFight[];

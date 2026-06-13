@@ -22,6 +22,7 @@ export interface WclSyncStore {
     raidNightId: string;
     reportCode: string;
     zone: string;
+    clearMs: number;
   }): Promise<{ wclReportId: string }>;
 
   /**
@@ -72,6 +73,7 @@ export async function syncWclReport(
     raidNightId,
     reportCode: report.reportCode,
     zone: report.zone,
+    clearMs: report.clearMs,
   });
 
   let matched = 0;

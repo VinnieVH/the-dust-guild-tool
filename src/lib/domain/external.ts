@@ -108,5 +108,7 @@ export interface ExternalReport {
    *  "Karazhan"). A free string — the guild raids any TBC instance. */
   zone: string;
   totalBossFights: number;
+  /** Clear duration in ms (report end - start) — the New Speed Record metric. */
+  clearMs: number;
   performances: ExternalPerformance[];
 }
