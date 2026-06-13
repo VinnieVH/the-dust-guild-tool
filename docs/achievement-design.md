@@ -150,11 +150,25 @@ streak chronology is filtered to 25-man zones (`is25ManZone` in `wow.ts`,
 allowlist: SSC/TK, Gruul/Mag, BT/Hyjal) BEFORE computing — otherwise a 25-man
 regular's streak breaks on every Kara night they skip, and a Kara-only attendee
 earns a streak they shouldn't. Live impact: the feed's 49 nights drop to 22
-counted (Kara was 27 of them). Same allowlist also gates speed records and rejects
-non-25-man reports at ingest (`syncWclReport`), so 10-man content never appears in
-crowns or records either. The milestone recompute is **authoritative** — it wipes
-`streak_milestones` and re-derives each run, so milestones inflated by the old
-Kara-inclusive count are corrected, not grandfathered.
+counted (Kara was 27 of them). The milestone recompute is **authoritative** — it
+wipes `streak_milestones` and re-derives each run, so milestones inflated by the
+old Kara-inclusive count are corrected, not grandfathered.
+
+**Where the filter lives (filter generators, never readers — binding).** There are
+exactly THREE award generators, and all three filter to 25-man at their data source:
+1. **Per-night engine** — `getNightPerformances` drops non-25-man reports per-REPORT
+   (a mixed SSC+Kara night still scores its SSC half). Covers every per-night
+   achievement: crowns, iron-man, fully-buffed, clean-sweep, well-oiled.
+2. **Speed records** — `computeSpeedRecords` filters `is25ManZone` at compute time.
+3. **Attendance streaks** — chronology filtered before `computeStreak` (above).
+
+Plus the ingest guard in `syncWclReport` rejects non-25-man reports at the door.
+Award **readers** (`getLeaderboard`, `getProfile`, `getNightResults`,
+`getSpeedRecordNights`) deliberately do NOT filter — they're multiple views of the
+same rows, so filtering one but not its siblings would create inconsistency.
+Because every generator's source is 25-man, every reader is clean by construction.
+(Bonus: the engine's scoped delete is self-healing — re-running it on a hypothetical
+pre-existing Kara night deletes its stale per-night awards.)
 
 **Counted per User, NOT per character (binding — the alt rule).** WCL attendance
 is keyed by character *name*, so an alt is a separate row. The streak engine

@@ -151,6 +151,72 @@ describe("WCL ingestion -> engine (live DB)", () => {
     });
     expect(survived).not.toBeNull();
   });
+
+  it("awards NOTHING for a 10-man (Karazhan) night — engine filters its source", async () => {
+    // Insert a Karazhan report + matched performances DIRECTLY (the ingest guard
+    // would reject Kara, so we simulate pre-guard data already in the DB). The
+    // per-night engine must score zero 25-man performances -> zero awards.
+    const { nightId, chars } = await seed();
+    const kara = await db.wclReport.create({
+      data: {
+        reportCode: `${PFX}kara`,
+        zone: "Karazhan",
+        clearMs: 1_800_000,
+        raidNightId: nightId,
+        performances: {
+          create: [
+            { characterId: chars[`${PFX}Topdps`], rawName: `${PFX}Topdps`, role: MainRole.DPS,
+              parseAvg: 99, dpsOrHps: 3000, deaths: 0, interrupts: 5, dispels: 0,
+              hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 11 },
+            { characterId: chars[`${PFX}Healer`], rawName: `${PFX}Healer`, role: MainRole.HEALER,
+              parseAvg: 95, dpsOrHps: 0, deaths: 0, interrupts: 0, dispels: 9,
+              hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 11 },
+          ],
+        },
+      },
+      select: { id: true },
+    });
+    void kara;
+
+    const result = await runNightEngineForNight(nightEngineRepository, nightId);
+    expect(result.scored).toBe(0); // no 25-man performances to score
+    expect(result.awards).toBe(0);
+    const awardCount = await db.achievementAward.count({ where: { raidNightId: nightId } });
+    expect(awardCount).toBe(0);
+  });
+
+  it("scores only the 25-man report on a MIXED-zone night (SSC + Karazhan)", async () => {
+    // Same night has both an SSC report and a Kara report. The engine must score
+    // the SSC performances (awards exist) but ignore the Kara ones entirely.
+    const { nightId, chars } = await seed();
+    await syncWclReport(new FakeSource(report()), wclSyncRepository, nightId, CODE); // SSC
+    await db.wclReport.create({
+      data: {
+        reportCode: `${PFX}kara2`,
+        zone: "Karazhan",
+        clearMs: 1_800_000,
+        raidNightId: nightId,
+        performances: {
+          create: [
+            // A Kara-only character who would win "deadliest" if Kara counted.
+            { characterId: chars[`${PFX}Lowdps`], rawName: `${PFX}Lowdps`, role: MainRole.DPS,
+              parseAvg: 100, dpsOrHps: 9999, deaths: 0, interrupts: 0, dispels: 0,
+              hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 11 },
+          ],
+        },
+      },
+    });
+
+    await runNightEngineForNight(nightEngineRepository, nightId);
+
+    // Deadliest goes to the SSC top parser (Topdps@95), NOT the Kara 100-parse Lowdps.
+    const deadliest = await db.achievementAward.findFirst({
+      where: { raidNightId: nightId, achievement: { key: "deadliest" } },
+      select: { characterId: true },
+    });
+    expect(deadliest?.characterId).toBe(chars[`${PFX}Topdps`]);
+    expect(deadliest?.characterId).not.toBe(chars[`${PFX}Lowdps`]);
+  });
 });
 
 describe("speed-record pass (live DB)", () => {

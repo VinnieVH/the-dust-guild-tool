@@ -1,6 +1,6 @@
 import type { ReportPerformance } from "@/lib/domain/night-score";
 import { MainRole } from "@/lib/domain/enums";
-import { zoneBossCount } from "@/lib/domain/wow";
+import { is25ManZone, zoneBossCount } from "@/lib/domain/wow";
 import type { ResolvePerformanceStore } from "@/lib/services/resolve-performance-service";
 import type { NightEngineStore } from "@/lib/services/run-night-engine-service";
 import type { SpeedRecordStore } from "@/lib/services/run-speed-record-service";
@@ -77,13 +77,23 @@ export const nightEngineRepository: NightEngineStore = {
       },
     });
 
+    // 25-man only: a night may mix zones (e.g. an SSC report + a Karazhan
+    // report). Drop the 10-man reports per-REPORT (not per-night), so the
+    // night's 25-man performances still score and a mixed night isn't wasted.
+    // This filters generator #1 (the per-night engine) at its data source,
+    // matching the speed-record + attendance filters — every per-night
+    // achievement (crowns, iron-man, clean-sweep, well-oiled) is now 25-man.
+    // Filtering here also keeps reportBossFights/zoneEncounterCount correct,
+    // since they're derived inside the loop over the remaining reports.
+    const raid25Reports = reports.filter((r) => is25ManZone(r.zone));
+
     const performances: ReportPerformance[] = [];
     const reportBossFights: number[] = [];
     // Distinct zones in the night; clean-sweep needs the encounter total. A
     // night is usually one zone — use the max known boss count across its zones.
     let zoneEncounterCount: number | null = null;
 
-    for (const report of reports) {
+    for (const report of raid25Reports) {
       // Boss fights of this report = distinct performances aren't a count; we
       // store fightsPresent per player, not the report's boss total. The report
       // boss total is the max fightsPresent across its players (everyone present
