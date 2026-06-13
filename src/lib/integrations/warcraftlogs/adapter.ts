@@ -98,6 +98,28 @@ export class WarcraftLogsAdapter implements IPerformanceSource {
   }
 }
 
+// Parse a WCL report code out of whatever an officer pastes: a full report URL
+// (optionally with a #fight=… fragment or trailing slash), or a bare code.
+// Returns null when no plausible code is found.
+//
+//   https://www.warcraftlogs.com/reports/NYh79GKXvVqMA6rW        -> code
+//   https://www.warcraftlogs.com/reports/NYh79GKXvVqMA6rW#fight=3 -> code
+//   warcraftlogs.com/reports/NYh79GKXvVqMA6rW/                    -> code
+//   NYh79GKXvVqMA6rW                                              -> code
+export function parseWclUrl(input: string): { reportCode: string } | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const match = trimmed.match(/(?:warcraftlogs\.com\/reports\/)([A-Za-z0-9]+)/);
+  if (match) return { reportCode: match[1] };
+
+  // Bare code: WCL report codes are 16 alphanumeric chars. Be lenient on length
+  // but reject anything with slashes/spaces or an obvious URL fragment.
+  if (/^[A-Za-z0-9]+$/.test(trimmed)) return { reportCode: trimmed };
+
+  return null;
+}
+
 function emptyDetail(): WclReportDetail {
   return {
     reportData: {
