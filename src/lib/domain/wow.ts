@@ -55,3 +55,18 @@ const ZONE_BOSS_COUNT: Record<string, number> = {
 export function zoneBossCount(zoneName: string): number | null {
   return ZONE_BOSS_COUNT[zoneName] ?? null;
 }
+
+// WCL TBC Classic zone NAME -> zone id, for guild rank queries (verified live
+// against the WCL API). SSC/TK reports as id 1056 in current logs; 1010 is the
+// older partition. We query the id the live reports use (1056).
+const ZONE_ID_BY_NAME: Record<string, number> = {
+  Karazhan: 1007,
+  "Gruul / Magtheridon": 1008,
+  "SSC / TK": 1056,
+  "BT / Hyjal": 1011,
+  "Zul'Aman": 1012,
+};
+
+export function zoneId(zoneName: string): number | null {
+  return ZONE_ID_BY_NAME[zoneName] ?? null;
+}

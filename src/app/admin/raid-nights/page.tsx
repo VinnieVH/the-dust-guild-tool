@@ -4,6 +4,7 @@ import { PageContainer } from "@/components/ui/page-container";
 import { listRaidNightsForAdmin } from "@/lib/repositories/admin-queries";
 import { countUnmatchedReservations } from "@/lib/repositories/reservation-queries";
 import { countUnmatchedPerformances } from "@/lib/repositories/wcl-unmatched-queries";
+import { RefreshGuildButton } from "./refresh-guild-button";
 import { SyncEventsButton } from "./sync-events-button";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
@@ -46,6 +47,7 @@ export default async function AdminRaidNightsPage() {
             )}
           </Link>
           <SyncEventsButton />
+          <RefreshGuildButton />
         </div>
       </header>
 
