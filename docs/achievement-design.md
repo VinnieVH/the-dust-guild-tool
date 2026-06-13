@@ -119,13 +119,51 @@ differences are normalized (WCL's whole point).
 | Award | Criterion | Min threshold | Who shines | Confidence |
 |---|---|---|---|---|
 | 🧪 **Fully Buffed** | Highest consumable score = count of categories present (flask / battle elixir / food) | must have ≥ 1 category (the unprepared can't *win*, but still raid) | the diligent prepper, *any* role/skill | ✅ **confirmed** |
-| 📅 **Perfect Attendance** | Present (signup + WCL fights) for every raid night in a streak | streak ≥ 2 consecutive nights | the reliable regular | ✅ (signup + fights data exists) |
+| 🔥 **Attendance Streak** | Consecutive logged raid nights attended, **counted per person (User)** | milestone thresholds (5/10/20…) award; the live count is a stat | the reliable regular | ✅ **confirmed** (see Attendance below) |
 | 🥇 **Iron Man** | Zero deaths all night | participation ≥ **75%**; **can award multiple** (everyone who qualifies) | the careful, *any* role | ✅ |
 
 `Fully Buffed` is the single best "everyone can shine" award: a 40th-percentile
 parser who brought flask + food + elixir beats a top parser who forgot consumes.
 Scored by **presence** (per sign-off) — see "Consumable detection" above for the
 self-source + allowlist filtering that makes it honest.
+
+#### Attendance Streak (replaces the old "Perfect Attendance") — signed off 2026-06-13
+
+The metric is a **streak**: how many raids in a row a person joined without
+missing. Two surfaces, split exactly like guild rank-vs-record:
+
+- **Current streak ("🔥 7 in a row")** — a live profile **stat**, recomputed each
+  sync. Display-only (it moves over time, so it cannot be a frozen award).
+- **Streak milestones (5 / 10 / 20 / … in a row)** — the **awardable** part:
+  granted on the raid night the threshold was crossed, kept forever. Maps to that
+  `RaidNight`. Matches the all-positive culture.
+
+**Source = WCL guild attendance API**, `guildData.guild.attendance` (probed live:
+49 nights of history for The Dust, paginated 25/page, newest first; each night has
+`code`, `startTime`, `zone`, `players[].name`, `players[].presence`). This is
+broader than per-report presence — it covers **every logged night automatically**,
+no officer pasting reports. Spans SSC/TK, Gruul/Mag, **and Karazhan**.
+
+**Counted per User, NOT per character (binding — the alt rule).** WCL attendance
+is keyed by character *name*, so an alt is a separate row. The streak engine
+**resolves each `players[].name` → `Character` → `User`** and counts presence per
+User, so a main + alt are one person's streak (see the cross-cutting Alts section).
+Unclaimed/unresolvable names are orphaned (can't credit a person we don't know) —
+same limitation as elsewhere.
+
+**Definitions (stated, not asked — sound defaults):**
+- A "raid" in the streak = a **logged** guild raid night (an attendance entry).
+  The streak is "consecutive *logged* nights attended", not "every raid that ever
+  happened" — an unlogged night is invisible, which is acceptable and documented.
+- A "miss" = a counted night where the User was absent. Current streak = the run of
+  most-recent consecutive attended nights. Any guild raid night counts (not
+  per-zone). Future "only signed-up nights" / per-zone variants are filters on the
+  same data, not a redesign.
+
+**Determinism (shares the New Speed Record rule):** current-streak and
+milestone-crossing are a **pure function of presence ordered by raid DATE**, not
+ingestion order. Recompute from full history every time; never incrementally
+mutate. Backfill / out-of-order ingest must yield identical streaks.
 
 ### Bucket 3 — Affectionate banter (outlier-gated, NOT a "worst" ranking)
 
@@ -174,7 +212,7 @@ Both reward *paying attention* over raw output — squarely "everyone can shine.
 | Bucket | Awards |
 |---|---|
 | Per-role winners (≥75% participation) | 🗡️ Deadliest · ✨ Lifebinder · 🛡️ Immovable Object |
-| Effort & diligence | 🧪 Fully Buffed (presence) · 📅 Perfect Attendance · 🥇 Iron Man (≥75%, multi) |
+| Effort & diligence | 🧪 Fully Buffed (presence) · 🔥 Attendance Streak (milestones) · 🥇 Iron Man (≥75%, multi) |
 | Utility heroes | 👢 Kick Commander · 🧼 Cleanse Crusader |
 | Affectionate banter (outlier-gated) | 💀 Floor Inspector |
 
@@ -186,6 +224,9 @@ Both reward *paying attention* over raw output — squarely "everyone can shine.
 - **Participation threshold = 75%** for the per-role crowns and Iron Man.
 - **Fully Buffed = presence** — booleans `hadFlask`/`hadFood`/`hadElixir`, score =
   count of true categories, min 1 to win. Self-source + curated GUID allowlist.
+- **Attendance = streak, counted per User** (not character). Current streak is a
+  live stat; milestones (5/10/20…) are the awards. Source = WCL guild attendance
+  API. See the Attendance Streak section — binding.
 - **Floor Inspector gate:** deaths ≥ 3 **and** ≥ 2× the runner-up; else no award.
 - All ties → seeded coin-flip (`raidNightId + achievementKey`).
 - **Deferred:** Totem Twister, SR Speedrunner.
@@ -265,3 +306,24 @@ flavor:** a non-awarded "new best server rank!" callout on the dashboard when a
 refresh improves a rank — celebratory without stamping profiles.
 
 **Deferred consciously:** per-encounter rank detail; rank history/sparklines.
+
+---
+
+## New WCL adapter surface needed (build notes)
+
+The current `IPerformanceSource.fetchReport` is per-report. Guild rank +
+attendance are **guild-level**, not report-level, so the adapter grows two new
+methods (likely a new port, e.g. `IGuildSource`, to keep `IPerformanceSource`
+focused — decide at build time):
+
+- `fetchZoneRanking(guildId, zoneId)` → `{ speed, progress }` world/region/server
+  ranks (+ `color`). Feeds the `guild_zone_rankings` display table.
+- `fetchAttendance(guildId)` → paged list of `{ code, startTime, zone, players:
+  [{ name, presence }] }` (25/page; follow `total`). Feeds the per-User streak.
+
+Both need the **guild id** (`809103` for The Dust). Source it from a report's
+`report.guild.id` on first WCL ingest, or an env/config value — decide at build
+time (env config is simplest and avoids a chicken-and-egg on first sync).
+
+Also: add report-level `startTime`/`endTime` to `REPORT_META` for clear duration
+(the New Speed Record metric).
