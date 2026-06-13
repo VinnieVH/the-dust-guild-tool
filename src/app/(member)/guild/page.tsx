@@ -1,9 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageContainer } from "@/components/ui/page-container";
+import { classColor } from "@/lib/domain/wow";
 import {
-  getSpeedRecordNights,
-  getZoneRankings,
+  getRoster,
+  getZoneBests,
+  type ZoneBestView,
 } from "@/lib/repositories/guild-queries";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
@@ -12,7 +14,7 @@ const dateFmt = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-// WoW item-quality colors for the rank tier badge.
+// WoW item-quality colors for the rank tier accent.
 const QUALITY_COLOR: Record<string, string> = {
   common: "#ffffff",
   uncommon: "#1eff00",
@@ -26,84 +28,160 @@ function rankColor(tier: string | null): string {
   return (tier && QUALITY_COLOR[tier]) || "#ffce1f";
 }
 
+// ms -> "1h 23m" / "48m" / "2m 05s". Clears are minutes-to-hours; show the
+// coarse unit plus one finer for readability.
+function formatClearMs(ms: number): string {
+  const totalMin = Math.round(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function hasAnyRank(z: ZoneBestView): boolean {
+  return (
+    z.speedServerRank != null ||
+    z.speedRegionRank != null ||
+    z.speedWorldRank != null
+  );
+}
+
 export default async function GuildPage() {
-  const [rankings, records] = await Promise.all([
-    getZoneRankings(),
-    getSpeedRecordNights(),
-  ]);
+  const [zones, roster] = await Promise.all([getZoneBests(), getRoster()]);
+
+  const anyData = zones.some((z) => z.bestClearMs != null || hasAnyRank(z));
 
   return (
     <PageContainer>
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-fel-300">Guild standing</h1>
         <p className="text-fel-200">
-          Where we rank on the realm, and the clears we&apos;re proudest of.
+          Our fastest clears and where we rank — realm, region, world.
         </p>
       </header>
 
-      <section className="mb-8">
-        <h2 className="mb-3 font-semibold text-fel-300">Speed rankings</h2>
-        {rankings.length === 0 ? (
-          <EmptyState title="No rankings synced yet">
-            An officer can pull them with “Refresh guild data” on the admin page.
+      <section className="mb-10">
+        {!anyData ? (
+          <EmptyState title="No standings synced yet">
+            An officer can pull them with “Refresh guild data” on the admin page,
+            once a raid’s logs are ingested.
           </EmptyState>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {rankings.map((r) => (
-              <Card key={r.zoneName}>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-fel-100">{r.zoneName}</span>
-                  {r.speedColor && (
-                    <span
-                      className="rounded px-2 py-0.5 text-xs font-semibold capitalize"
-                      style={{ color: rankColor(r.speedColor), borderColor: rankColor(r.speedColor) }}
-                    >
-                      {r.speedColor}
-                    </span>
-                  )}
-                </div>
-                <dl className="mt-2 grid grid-cols-3 gap-1 text-center text-sm">
-                  <div>
-                    <dt className="text-xs text-fel-200">Server</dt>
-                    <dd className="font-semibold text-fel-100">#{r.speedServerRank ?? "—"}</dd>
+          <div className="flex flex-col gap-3">
+            {zones.map((z) => {
+              const accent = rankColor(z.speedColor);
+              return (
+                <Card key={z.zoneName}>
+                  {/* WCL-style row: zone + tier on the left, our time, then the
+                      three rank stat blocks on the right. */}
+                  <div
+                    className="flex flex-col gap-3 border-l-4 pl-3 sm:flex-row sm:items-center sm:justify-between"
+                    style={{ borderColor: accent }}
+                  >
+                    <div className="min-w-[10rem]">
+                      <div className="font-semibold text-fel-100">{z.zoneName}</div>
+                      {z.speedColor && (
+                        <span
+                          className="text-xs font-semibold capitalize"
+                          style={{ color: accent }}
+                        >
+                          {z.speedColor}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs uppercase tracking-wide text-fel-200">
+                        Fastest
+                      </span>
+                      <span className="text-lg font-bold text-gold">
+                        {z.bestClearMs != null ? formatClearMs(z.bestClearMs) : "—"}
+                      </span>
+                    </div>
+
+                    <dl className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <dt className="text-[10px] uppercase tracking-wide text-fel-200">
+                          Realm
+                        </dt>
+                        <dd
+                          className="font-semibold"
+                          style={{ color: z.speedServerRank != null ? accent : undefined }}
+                        >
+                          {z.speedServerRank != null ? `#${z.speedServerRank}` : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] uppercase tracking-wide text-fel-200">
+                          Region
+                        </dt>
+                        <dd className="text-fel-100">
+                          {z.speedRegionRank != null ? `#${z.speedRegionRank}` : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] uppercase tracking-wide text-fel-200">
+                          World
+                        </dt>
+                        <dd className="text-fel-100">
+                          {z.speedWorldRank != null ? `#${z.speedWorldRank}` : "—"}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
-                  <div>
-                    <dt className="text-xs text-fel-200">Region</dt>
-                    <dd className="text-fel-100">#{r.speedRegionRank ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-fel-200">World</dt>
-                    <dd className="text-fel-100">#{r.speedWorldRank ?? "—"}</dd>
-                  </div>
-                </dl>
-                <p className="mt-2 text-[10px] text-fel-200">
-                  as of {dateFmt.format(r.fetchedAt)}
-                </p>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </section>
 
       <section>
-        <h2 className="mb-3 font-semibold text-gold">Speed records 🏆</h2>
-        {records.length === 0 ? (
-          <EmptyState title="No speed records yet">
-            Ingest a raid’s Warcraft Logs report — the fastest clear of each zone
-            earns the record.
+        <h2 className="mb-3 flex items-baseline gap-2 font-semibold text-fel-300">
+          Roster
+          {roster.total > 0 && (
+            <span className="text-sm font-normal text-fel-200">
+              · {roster.total} members
+            </span>
+          )}
+        </h2>
+        {roster.groups.length === 0 ? (
+          <EmptyState title="No roster synced yet">
+            “Refresh guild data” pulls the guild’s Warcraft Logs roster.
           </EmptyState>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {records.map((rec) => (
-              <li
-                key={rec.raidNightId}
-                className="flex items-center justify-between rounded border border-gold/40 bg-legion-800 px-3 py-2"
-              >
-                <span className="font-medium text-gold">{rec.zone ?? rec.title}</span>
-                <span className="text-sm text-fel-200">{dateFmt.format(rec.date)}</span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {roster.groups.map((g) => (
+                <Card key={g.className}>
+                  <h3
+                    className="mb-2 text-sm font-semibold"
+                    style={{ color: classColor(g.className) }}
+                  >
+                    {g.className}{" "}
+                    <span className="text-fel-200">({g.members.length})</span>
+                  </h3>
+                  <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
+                    {g.members.map((m) => (
+                      <li key={m.name} style={{ color: classColor(g.className) }}>
+                        {m.name}
+                        {m.level !== 70 && (
+                          <span className="ml-0.5 text-[10px] text-fel-200">
+                            {m.level}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              ))}
+            </div>
+            {roster.fetchedAt && (
+              <p className="mt-3 text-[10px] text-fel-200">
+                Roster as of {dateFmt.format(roster.fetchedAt)}
+              </p>
+            )}
+          </>
         )}
       </section>
     </PageContainer>

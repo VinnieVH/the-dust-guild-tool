@@ -105,6 +105,29 @@ export const GUILD_ATTENDANCE = /* GraphQL */ `
   }
 `;
 
+// One page of the guild's full member roster (the whole guild, NOT filtered by
+// content). classID is WCL's own class enum. Verified live against guild 809103
+// (41 members). Paginated like attendance.
+export const GUILD_MEMBERS = /* GraphQL */ `
+  query GuildMembers($guildId: Int!, $page: Int!) {
+    guildData {
+      guild(id: $guildId) {
+        members(page: $page) {
+          total
+          has_more_pages
+          current_page
+          last_page
+          data {
+            name
+            classID
+            level
+          }
+        }
+      }
+    }
+  }
+`;
+
 // Live world/region/server speed + progress ranks for one zone.
 export const GUILD_ZONE_RANKING = /* GraphQL */ `
   query GuildZoneRanking($guildId: Int!, $zoneId: Int!) {

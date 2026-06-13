@@ -1,13 +1,19 @@
 import type {
   ExternalGuildAttendance,
+  ExternalGuildMember,
   ExternalZoneRanking,
 } from "@/lib/domain/external";
+import { wclClassName } from "@/lib/domain/wow";
 import { IntegrationError } from "@/lib/integrations/errors";
 import type { IGuildSource } from "@/lib/integrations/interfaces";
 import type { WclCredentials } from "./auth";
 import { WclClient, type WclQuerier } from "./client";
-import type { WclGuildAttendance, WclGuildZoneRanking } from "./dto";
-import { GUILD_ATTENDANCE, GUILD_ZONE_RANKING } from "./queries";
+import type {
+  WclGuildAttendance,
+  WclGuildMembers,
+  WclGuildZoneRanking,
+} from "./dto";
+import { GUILD_ATTENDANCE, GUILD_MEMBERS, GUILD_ZONE_RANKING } from "./queries";
 
 // Guild-level WCL adapter (IGuildSource): attendance history (paged) + live
 // zone rankings. Separate from WarcraftLogsAdapter (report-scoped) to keep each
@@ -49,6 +55,35 @@ export class WarcraftLogsGuildAdapter implements IGuildSource {
         });
       }
       if (!att.has_more_pages) break;
+      page += 1;
+    }
+    return out;
+  }
+
+  async fetchRoster(guildId: number): Promise<ExternalGuildMember[]> {
+    const out: ExternalGuildMember[] = [];
+    let page = 1;
+    // Bounded defensively; 41 members at the default page size is ~1-2 pages.
+    for (let guard = 0; guard < 200; guard++) {
+      const res = await this.client.query<WclGuildMembers>(GUILD_MEMBERS, {
+        guildId,
+        page,
+      });
+      const members = res.guildData.guild?.members;
+      if (!members) {
+        throw new IntegrationError(
+          "warcraftlogs",
+          `guild ${guildId} roster not found`,
+        );
+      }
+      for (const m of members.data) {
+        out.push({
+          name: m.name,
+          className: wclClassName(m.classID),
+          level: m.level,
+        });
+      }
+      if (!members.has_more_pages) break;
       page += 1;
     }
     return out;

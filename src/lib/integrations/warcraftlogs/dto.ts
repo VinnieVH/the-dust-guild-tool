@@ -130,6 +130,27 @@ export interface WclGuildAttendance {
   };
 }
 
+export interface WclGuildMember {
+  name: string;
+  /** WCL's own class-id enum (see wclClassName) — NOT Blizzard's. */
+  classID: number;
+  level: number;
+}
+
+export interface WclGuildMembers {
+  guildData: {
+    guild: {
+      members: {
+        total: number;
+        has_more_pages: boolean;
+        current_page: number;
+        last_page: number;
+        data: WclGuildMember[];
+      };
+    } | null;
+  };
+}
+
 interface WclRankNumber {
   number: number | null;
   color?: string | null;

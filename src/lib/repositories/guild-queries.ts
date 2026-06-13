@@ -1,69 +1,94 @@
+import { is25ManZone, RAID_25_ZONES } from "@/lib/domain/wow";
 import { db } from "@/lib/db";
 
-// Read-side view models for the guild dashboard: live zone rankings + the
-// guild's current speed-record nights.
+// Read-side view models for the guild dashboard: per-25-man-zone standings
+// (our fastest clear + live realm/region/world rank) and the WCL roster.
 
-export interface ZoneRankView {
+// One per-zone standings card: the guild's own fastest clear + live R/R/W rank,
+// for each 25-man raid (fixed set, in progression order). Either half may be
+// null (not cleared yet / not ranked yet) — the card shows "—".
+export interface ZoneBestView {
   zoneName: string;
+  /** Fastest clear (ms) the guild has logged for this zone, or null. */
+  bestClearMs: number | null;
   speedServerRank: number | null;
   speedRegionRank: number | null;
   speedWorldRank: number | null;
   speedColor: string | null;
-  progServerRank: number | null;
-  fetchedAt: Date;
+  rankFetchedAt: Date | null;
 }
 
-export interface SpeedRecordView {
-  raidNightId: string;
-  title: string;
-  date: Date;
-  zone: string | null;
-}
-
-export async function getZoneRankings(): Promise<ZoneRankView[]> {
-  const rows = await db.guildZoneRanking.findMany({
-    orderBy: { zoneName: "asc" },
+export async function getZoneBests(): Promise<ZoneBestView[]> {
+  // Fastest clear per zone: min positive clearMs across the guild's reports.
+  // Mirrors the speed-record pass's "a zone's clear = its fastest report" rule,
+  // so this number agrees with the New Speed Record award.
+  const reports = await db.wclReport.findMany({
+    where: { clearMs: { gt: 0 } },
+    select: { zone: true, clearMs: true },
   });
-  return rows.map((r) => ({
-    zoneName: r.zoneName,
-    speedServerRank: r.speedServerRank,
-    speedRegionRank: r.speedRegionRank,
-    speedWorldRank: r.speedWorldRank,
-    speedColor: r.speedColor,
-    progServerRank: r.progServerRank,
-    fetchedAt: r.fetchedAt,
-  }));
-}
-
-// Nights that currently hold a speed record (distinct raid nights with a
-// new-speed-record award), newest first.
-export async function getSpeedRecordNights(): Promise<SpeedRecordView[]> {
-  const awards = await db.achievementAward.findMany({
-    where: { achievement: { key: "new-speed-record" } },
-    select: {
-      raidNight: {
-        select: {
-          id: true,
-          title: true,
-          date: true,
-          reports: { select: { zone: true }, take: 1 },
-        },
-      },
-    },
-  });
-
-  // Distinct by raid night (everyone present shares the award).
-  const byNight = new Map<string, SpeedRecordView>();
-  for (const a of awards) {
-    const n = a.raidNight;
-    if (!byNight.has(n.id)) {
-      byNight.set(n.id, {
-        raidNightId: n.id,
-        title: n.title,
-        date: n.date,
-        zone: n.reports[0]?.zone ?? null,
-      });
-    }
+  const bestByZone = new Map<string, number>();
+  for (const r of reports) {
+    if (r.clearMs == null || !is25ManZone(r.zone)) continue;
+    const cur = bestByZone.get(r.zone);
+    if (cur == null || r.clearMs < cur) bestByZone.set(r.zone, r.clearMs);
   }
-  return [...byNight.values()].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  const rankings = await db.guildZoneRanking.findMany();
+  const rankByZone = new Map(rankings.map((r) => [r.zoneName, r]));
+
+  // Fixed set, progression order — show every 25-man raid even before a clear.
+  return RAID_25_ZONES.map((zoneName) => {
+    const rank = rankByZone.get(zoneName);
+    return {
+      zoneName,
+      bestClearMs: bestByZone.get(zoneName) ?? null,
+      speedServerRank: rank?.speedServerRank ?? null,
+      speedRegionRank: rank?.speedRegionRank ?? null,
+      speedWorldRank: rank?.speedWorldRank ?? null,
+      speedColor: rank?.speedColor ?? null,
+      rankFetchedAt: rank?.fetchedAt ?? null,
+    };
+  });
+}
+
+// The WCL guild roster, grouped by class for a class-colored grid. Whole guild,
+// NOT filtered by content.
+export interface RosterMember {
+  name: string;
+  level: number;
+}
+
+export interface RosterClassGroup {
+  className: string;
+  members: RosterMember[];
+}
+
+export interface RosterView {
+  total: number;
+  fetchedAt: Date | null;
+  groups: RosterClassGroup[];
+}
+
+export async function getRoster(): Promise<RosterView> {
+  const rows = await db.guildMember.findMany({
+    orderBy: [{ className: "asc" }, { name: "asc" }],
+    select: { name: true, className: true, level: true, fetchedAt: true },
+  });
+
+  const byClass = new Map<string, RosterMember[]>();
+  for (const r of rows) {
+    const list = byClass.get(r.className) ?? [];
+    list.push({ name: r.name, level: r.level });
+    byClass.set(r.className, list);
+  }
+
+  const groups: RosterClassGroup[] = [...byClass.entries()]
+    .map(([className, members]) => ({ className, members }))
+    .sort((a, b) => a.className.localeCompare(b.className));
+
+  return {
+    total: rows.length,
+    fetchedAt: rows[0]?.fetchedAt ?? null,
+    groups,
+  };
 }

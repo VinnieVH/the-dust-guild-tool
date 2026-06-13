@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { WclQuerier } from "@/lib/integrations/warcraftlogs/client";
 import { WarcraftLogsGuildAdapter } from "@/lib/integrations/warcraftlogs/guild-adapter";
-import { GUILD_ATTENDANCE, GUILD_ZONE_RANKING } from "@/lib/integrations/warcraftlogs/queries";
+import {
+  GUILD_ATTENDANCE,
+  GUILD_MEMBERS,
+  GUILD_ZONE_RANKING,
+} from "@/lib/integrations/warcraftlogs/queries";
 
 describe("WarcraftLogsGuildAdapter — attendance pagination", () => {
   it("pages through has_more_pages and concatenates nights", async () => {
@@ -37,6 +41,42 @@ describe("WarcraftLogsGuildAdapter — attendance pagination", () => {
     // presence 2 (partial) still counts as present.
     expect(nights[2].players[0].present).toBe(true);
     expect(nights[0].startTime).toBeInstanceOf(Date);
+  });
+});
+
+describe("WarcraftLogsGuildAdapter — roster", () => {
+  it("pages through members and maps WCL classID -> class name", async () => {
+    const query = vi.fn(async (doc: string, vars: Record<string, unknown>) => {
+      if (doc !== GUILD_MEMBERS) throw new Error("unexpected doc");
+      const page = vars.page as number;
+      if (page === 1) {
+        return {
+          guildData: { guild: { members: {
+            total: 3, current_page: 1, last_page: 2, has_more_pages: true,
+            data: [
+              { name: "Koczikson", classID: 6, level: 70 }, // Paladin
+              { name: "Arvuna", classID: 10, level: 70 }, // Warlock
+            ],
+          } } } };
+      }
+      return {
+        guildData: { guild: { members: {
+          total: 3, current_page: 2, last_page: 2, has_more_pages: false,
+          data: [{ name: "Bigmacks", classID: 2, level: 68 }], // Druid
+        } } } };
+    });
+
+    const adapter = new WarcraftLogsGuildAdapter(
+      { clientId: "x", clientSecret: "y" },
+      { query } as unknown as WclQuerier,
+    );
+    const roster = await adapter.fetchRoster(809103);
+    expect(query).toHaveBeenCalledTimes(2); // followed pagination
+    expect(roster).toEqual([
+      { name: "Koczikson", className: "Paladin", level: 70 },
+      { name: "Arvuna", className: "Warlock", level: 70 },
+      { name: "Bigmacks", className: "Druid", level: 68 },
+    ]);
   });
 });
 

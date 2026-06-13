@@ -278,6 +278,21 @@ model GuildZoneRanking {
   @@map("guild_zone_rankings")
 }
 
+// The guild's full WCL member roster (display-only, NEVER awarded; the WHOLE
+// guild, NOT filtered by 25-man content — the 25-man rule is about content, not
+// membership). Refreshed each guild sync via guildData.guild.members. One row
+// per member name (the WCL roster key). className is resolved from WCL's classID
+// enum at the adapter (see wclClassName).
+model GuildMember {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  className String
+  level     Int
+  fetchedAt DateTime
+
+  @@map("guild_members")
+}
+
 // ---------------------------------------------------------------------------
 // Auth.js (NextAuth v5) adapter models
 // ---------------------------------------------------------------------------

@@ -40,6 +40,31 @@ export function classColor(wowClass: string): string {
   return CLASS_COLORS[wowClass] ?? "#FFFFFF";
 }
 
+// WCL's OWN class-id enum (NOT Blizzard's) — verified live against the WCL
+// gameData.classes query, not memory. The roster's `classID` keys into this to
+// recover a class name, which then keys CLASS_COLORS. Includes retail classes
+// WCL lists (DK/Monk/DH/Evoker) for completeness even though TBC has none.
+const WCL_CLASS_BY_ID: Record<number, string> = {
+  1: "Death Knight",
+  2: "Druid",
+  3: "Hunter",
+  4: "Mage",
+  5: "Monk",
+  6: "Paladin",
+  7: "Priest",
+  8: "Rogue",
+  9: "Shaman",
+  10: "Warlock",
+  11: "Warrior",
+  12: "Demon Hunter",
+  13: "Evoker",
+};
+
+/** WCL classID -> class name, or "Unknown" for an unmapped id. */
+export function wclClassName(classID: number): string {
+  return WCL_CLASS_BY_ID[classID] ?? "Unknown";
+}
+
 // Boss counts per WCL zone NAME (TBC), for the Clean Sweep guild achievement
 // ("all bosses killed"). Keyed by the zone name WCL reports — note SSC/TK is a
 // combined WCL zone (one "clear" spans both raids). Unknown zones return null,
@@ -79,13 +104,17 @@ export function zoneId(zoneName: string): number | null {
 // default rather than silently counted. Keyed on the COMBINED WCL labels the
 // attendance + report feeds actually return (verified live: the feed emits
 // "Gruul / Magtheridon", "SSC / TK", "Karazhan" — not split zone names).
-const RAID_25_ZONES: ReadonlySet<string> = new Set([
-  "SSC / TK",
+// Ordered by TBC progression (entry -> end). The UI iterates this for the
+// per-zone standings cards (a fixed set, "—" for zones not yet cleared).
+export const RAID_25_ZONES = [
   "Gruul / Magtheridon",
+  "SSC / TK",
   "BT / Hyjal",
-]);
+] as const;
+
+const RAID_25_ZONE_SET: ReadonlySet<string> = new Set(RAID_25_ZONES);
 
 /** True when a WCL zone name is 25-man content this guild raids together. */
 export function is25ManZone(zoneName: string): boolean {
-  return RAID_25_ZONES.has(zoneName);
+  return RAID_25_ZONE_SET.has(zoneName);
 }

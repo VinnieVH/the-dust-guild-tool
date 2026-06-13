@@ -88,6 +88,14 @@ export interface ExternalGuildAttendance {
   players: Array<{ name: string; present: boolean }>;
 }
 
+// One member of the WCL guild roster (whole guild, NOT filtered by content).
+export interface ExternalGuildMember {
+  name: string;
+  /** Class name resolved from WCL's classID enum (see wclClassName). */
+  className: string;
+  level: number;
+}
+
 // Live guild standing for one zone (display-only).
 export interface ExternalZoneRanking {
   zoneId: number;
