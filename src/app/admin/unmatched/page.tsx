@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { listUnmatchedReservations } from "@/lib/repositories/reservation-queries";
 import { listUnmatchedPerformances } from "@/lib/repositories/wcl-unmatched-queries";
+import { DismissAllButton } from "./dismiss-all-button";
 import { UnmatchedRow } from "./unmatched-row";
 import { WclUnmatchedRow } from "./wcl-unmatched-row";
 
@@ -39,14 +40,18 @@ export default async function UnmatchedPage() {
       )}
 
       <section className="mt-10">
-        <header className="mb-4">
-          <h2 className="text-lg font-semibold text-fel-300">
-            Unmatched Warcraft Logs names
-          </h2>
-          <p className="text-sm text-fel-200">
-            WCL report names that didn&apos;t resolve to a character. Linking
-            remembers the alias and re-scores that night&apos;s achievements.
-          </p>
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-fel-300">
+              Unmatched Warcraft Logs names
+            </h2>
+            <p className="text-sm text-fel-200">
+              WCL report names that didn&apos;t resolve to a character. Linking
+              remembers the alias and re-scores that night&apos;s achievements;
+              dismiss pugs who were never guild members.
+            </p>
+          </div>
+          <DismissAllButton count={perfs.length} />
         </header>
         {perfs.length === 0 ? (
           <Card>

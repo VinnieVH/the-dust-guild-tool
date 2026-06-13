@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import type { UnmatchedPerformance } from "@/lib/repositories/wcl-unmatched-queries";
 import {
   type ResolveActionState,
+  ignorePerformanceAction,
   linkPerformanceAction,
   searchCharacters,
 } from "./actions";
@@ -16,6 +17,7 @@ type SearchHit = { id: string; name: string; class: string };
 
 export function WclUnmatchedRow({ perf }: { perf: UnmatchedPerformance }) {
   const [linkState, link, linkPending] = useActionState(linkPerformanceAction, initial);
+  const [ignoreState, ignore, ignorePending] = useActionState(ignorePerformanceAction, initial);
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [picked, setPicked] = useState<SearchHit | null>(null);
   const [, startSearch] = useTransition();
@@ -68,10 +70,24 @@ export function WclUnmatchedRow({ perf }: { perf: UnmatchedPerformance }) {
             </button>
           </form>
         )}
+
+        {/* Dismiss: not a guild member (a pug). Hides it from the queue; the
+            performance rows stay (never scored). */}
+        <form action={ignore} className="ml-auto">
+          <input type="hidden" name="rawName" value={perf.rawName} />
+          <button
+            type="submit"
+            disabled={ignorePending}
+            className="rounded border border-neutral-700 px-2 py-1 text-sm text-fel-200 hover:text-fel-100 disabled:opacity-50"
+          >
+            {ignorePending ? "…" : "Dismiss"}
+          </button>
+        </form>
       </div>
 
       {linkState.error && <p className="mt-2 text-sm text-red-400">{linkState.error}</p>}
       {linkState.success && <p className="mt-2 text-sm text-green-400">{linkState.success}</p>}
+      {ignoreState.error && <p className="mt-2 text-sm text-red-400">{ignoreState.error}</p>}
     </Card>
   );
 }

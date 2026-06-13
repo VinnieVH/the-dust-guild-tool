@@ -203,6 +203,21 @@ model PlayerPerformance {
   @@map("player_performances")
 }
 
+// Officer "this WCL name is not a guild member, stop showing it" list — pugs
+// from before the 25-man roster existed, etc. Keyed on rawName so it's DURABLE
+// across re-syncs (re-ingest re-creates the performance rows, but the unmatched
+// queue filters out any name on this list). DISPLAY-ONLY: the performance rows
+// stay (harmless — they're never scored, since the engine only reads
+// characterId != null), we just hide them from the officer queue + badge count.
+// Linking a name to a real character later removes it from this list.
+model IgnoredWclName {
+  id        String   @id @default(cuid())
+  rawName   String   @unique
+  ignoredAt DateTime @default(now())
+
+  @@map("ignored_wcl_names")
+}
+
 model Achievement {
   id          String             @id @default(cuid())
   key         String             @unique

@@ -6,6 +6,7 @@ import {
   wclNightId,
   type AutoIngestStore,
 } from "@/lib/services/auto-ingest-service";
+import type { IgnoreWclNameStore } from "@/lib/services/ignore-wcl-name-service";
 import type { ResolvePerformanceStore } from "@/lib/services/resolve-performance-service";
 import type { NightEngineStore } from "@/lib/services/run-night-engine-service";
 import type { SpeedRecordStore } from "@/lib/services/run-speed-record-service";
@@ -182,7 +183,43 @@ export const resolvePerformanceRepository: ResolvePerformanceStore = {
       where: { rawName, characterId: null },
       data: { characterId },
     });
+    // If this name was previously dismissed as a pug, linking it overrides that.
+    await db.ignoredWclName.deleteMany({ where: { rawName } });
     return [...new Set(affected.map((p) => p.wclReport.raidNightId))];
+  },
+};
+
+export const ignoreWclNameRepository: IgnoreWclNameStore = {
+  async ignoreName(rawName) {
+    await db.ignoredWclName.upsert({
+      where: { rawName },
+      update: {},
+      create: { rawName },
+    });
+  },
+
+  async listUnmatchedNotIgnored() {
+    const [perfs, ignored] = await Promise.all([
+      db.playerPerformance.findMany({
+        where: { characterId: null },
+        select: { rawName: true },
+        distinct: ["rawName"],
+      }),
+      db.ignoredWclName.findMany({ select: { rawName: true } }),
+    ]);
+    const seen = new Set(ignored.map((r) => r.rawName));
+    return perfs.map((p) => p.rawName).filter((n) => !seen.has(n));
+  },
+
+  async ignoreNames(rawNames) {
+    await db.ignoredWclName.createMany({
+      data: rawNames.map((rawName) => ({ rawName })),
+      skipDuplicates: true,
+    });
+  },
+
+  async unignoreName(rawName) {
+    await db.ignoredWclName.deleteMany({ where: { rawName } });
   },
 };
 

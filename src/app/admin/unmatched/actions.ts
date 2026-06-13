@@ -7,10 +7,15 @@ import { isValidClass, isValidSpec } from "@/lib/domain/wow";
 import { db } from "@/lib/db";
 import { reservationResolveRepository } from "@/lib/repositories/reservation-repository";
 import {
+  ignoreWclNameRepository,
   nightEngineRepository,
   resolvePerformanceRepository,
   speedRecordRepository,
 } from "@/lib/repositories/wcl-repository";
+import {
+  ignoreAllUnmatchedWclNames,
+  ignoreWclName,
+} from "@/lib/services/ignore-wcl-name-service";
 import {
   acceptSuggestion,
   createAndLinkReservation,
@@ -162,6 +167,28 @@ export async function linkPerformanceAction(
   }
   revalidate();
   return { success: `Linked ${parsed.data.rawName} (${res.affectedRaidNightIds.length} night(s) re-scored).` };
+}
+
+const rawNameSchema = z.object({ rawName: z.string().min(1) });
+
+// Dismiss one unmatched WCL name (a pug, not a guild member). Display-only:
+// hides it from the queue + badge; the performance rows stay (never scored).
+export async function ignorePerformanceAction(
+  _prev: ResolveActionState,
+  formData: FormData,
+): Promise<ResolveActionState> {
+  const parsed = rawNameSchema.safeParse({ rawName: formData.get("rawName") });
+  if (!parsed.success) return { error: "Invalid input." };
+  await ignoreWclName(ignoreWclNameRepository, parsed.data.rawName);
+  revalidate();
+  return { success: `Dismissed ${parsed.data.rawName}.` };
+}
+
+// Dismiss EVERY currently-unmatched WCL name at once (clears the pug backlog).
+export async function ignoreAllPerformancesAction(): Promise<ResolveActionState> {
+  const res = await ignoreAllUnmatchedWclNames(ignoreWclNameRepository);
+  revalidate();
+  return { success: `Dismissed ${res.dismissed} WCL name${res.dismissed === 1 ? "" : "s"}.` };
 }
 
 // Character name search for the Link picker (server action, called from client).
