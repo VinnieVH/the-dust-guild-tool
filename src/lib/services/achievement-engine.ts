@@ -37,6 +37,12 @@ export const PER_NIGHT_RULES: AchievementRule[] = [
   wellOiledMachine,
 ];
 
+/** The achievement keys the per-night engine owns. The persistence layer must
+ *  scope its delete-and-re-award to THESE keys only — otherwise it would clobber
+ *  awards owned by other passes (new-speed-record, streaks) that it can't
+ *  regenerate. Derived from the registry so it stays self-maintaining. */
+export const PER_NIGHT_ACHIEVEMENT_KEYS: string[] = PER_NIGHT_RULES.map((r) => r.key);
+
 /** Run all per-night rules; returns every award for the night (achievementKey +
  *  characterId). Deterministic and order-independent. */
 export function runNightEngine(

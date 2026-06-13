@@ -11,9 +11,10 @@ import { streakKey } from "@/lib/domain/achievements";
 // repository/service that calls this — see docs/achievement-design.md.
 
 /** One night in the chronology, already ordered by the caller (date, then
- *  raidNightId — same ordering as speed records). */
+ *  reportCode). Keyed by the WCL attendance report code — the streak runs on
+ *  the WCL attendance spine, not raid_nights. */
 export interface StreakNight {
-  raidNightId: string;
+  reportCode: string;
   /** True if the User attended this night on ANY owned character (alt-deduped
    *  upstream). */
   present: boolean;
@@ -23,9 +24,10 @@ export interface StreakResult {
   /** Trailing run of attended nights up to the most recent night (the live
    *  stat shown on a profile). */
   currentStreak: number;
-  /** Milestones the User has earned, each with the night it was first reached.
-   *  Never revoked (assumes append-only attendance — a deliberate choice). */
-  milestones: Array<{ achievementKey: string; raidNightId: string }>;
+  /** Milestones the User has earned, each with the WCL report code of the night
+   *  it was first reached. Never revoked (assumes append-only attendance — a
+   *  deliberate choice). */
+  milestones: Array<{ achievementKey: string; crossedReportCode: string }>;
 }
 
 /**
@@ -36,7 +38,7 @@ export function computeStreak(nights: StreakNight[]): StreakResult {
   // Forward walk: running count, award each milestone the first night the count
   // reaches it. Bounding a run by an absence is never a penalty — a late joiner
   // simply has absences before they existed, which start their run cleanly.
-  const milestones: Array<{ achievementKey: string; raidNightId: string }> = [];
+  const milestones: Array<{ achievementKey: string; crossedReportCode: string }> = [];
   const awarded = new Set<number>();
   let run = 0;
   for (const night of nights) {
@@ -45,7 +47,7 @@ export function computeStreak(nights: StreakNight[]): StreakResult {
       for (const m of STREAK_MILESTONES) {
         if (run >= m && !awarded.has(m)) {
           awarded.add(m);
-          milestones.push({ achievementKey: streakKey(m), raidNightId: night.raidNightId });
+          milestones.push({ achievementKey: streakKey(m), crossedReportCode: night.reportCode });
         }
       }
     } else {

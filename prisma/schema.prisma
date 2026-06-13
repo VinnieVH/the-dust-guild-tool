@@ -232,17 +232,24 @@ model AchievementAward {
 // date-ordered history, NOT per-night data. The per-night engine's
 // delete-by-raidNightId must never be able to touch these (it can't regenerate
 // them — it only sees one night). Owned by the attendance-streak service, which
-// recomputes from history and upserts. `raidNightId` records the night the
-// milestone was crossed (for display); the unique key is (user, achievement) so
+// recomputes from history and upserts. The unique key is (user, achievement) so
 // recompute is idempotent — you reach "10 in a row" once, kept forever.
+//
+// SPINE NOTE: streaks run on the WCL ATTENDANCE timeline (logged nights), which
+// is a different spine from `raid_nights` (Raid-Helper events) — they aren't
+// guaranteed 1:1. So the "where it was crossed" reference is the WCL
+// `crossedReportCode` (always available from attendance), and `raidNightId` is
+// an OPTIONAL link to a RaidNight when that report was ingested (for nice
+// display); a logged night with no ingested report still records the milestone.
 model StreakMilestone {
-  id            String      @id @default(cuid())
-  userId        String
-  achievementId String
-  raidNightId   String
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
-  raidNight     RaidNight   @relation(fields: [raidNightId], references: [id], onDelete: Cascade)
+  id                String      @id @default(cuid())
+  userId            String
+  achievementId     String
+  crossedReportCode String
+  raidNightId       String?
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement       Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  raidNight         RaidNight?  @relation(fields: [raidNightId], references: [id], onDelete: SetNull)
 
   @@unique([userId, achievementId])
   @@map("streak_milestones")
