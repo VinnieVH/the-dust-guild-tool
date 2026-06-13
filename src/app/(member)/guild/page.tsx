@@ -65,9 +65,11 @@ function RoleColumn({
       <ul className="flex flex-col gap-1">
         {members.map((m) => (
           <li key={m.name} className="flex items-center justify-between gap-3 text-sm">
-            <span style={{ color: classColor(m.className) }}>
-              <span className="font-medium">{m.name}</span>
-              {m.spec && <span className="ml-1.5 text-xs opacity-70">{m.spec}</span>}
+            {/* Class color conveys the class; spec text is intentionally omitted
+                (WCL's spec labels don't match in-game TBC names — see the
+                composition design note). spec stays captured in the snapshot. */}
+            <span className="font-medium" style={{ color: classColor(m.className) }}>
+              {m.name}
             </span>
             <span className="rounded bg-legion-900 px-1.5 py-0.5 text-xs font-semibold text-fel-200">
               {m.maxItemLevel}
