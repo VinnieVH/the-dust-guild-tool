@@ -24,7 +24,7 @@ function guildSource(history: ExternalGuildAttendance[]): IGuildSource {
   return {
     fetchAttendance: vi.fn(async () => history),
     fetchZoneRanking: vi.fn(),
-    fetchRoster: vi.fn(),
+    fetchComposition: vi.fn(),
   };
 }
 

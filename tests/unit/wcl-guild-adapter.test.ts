@@ -3,9 +3,10 @@ import type { WclQuerier } from "@/lib/integrations/warcraftlogs/client";
 import { WarcraftLogsGuildAdapter } from "@/lib/integrations/warcraftlogs/guild-adapter";
 import {
   GUILD_ATTENDANCE,
-  GUILD_MEMBERS,
   GUILD_ZONE_RANKING,
+  REPORT_COMPOSITION,
 } from "@/lib/integrations/warcraftlogs/queries";
+import { MainRole } from "@/lib/domain/enums";
 
 describe("WarcraftLogsGuildAdapter — attendance pagination", () => {
   it("pages through has_more_pages and concatenates nights", async () => {
@@ -44,39 +45,75 @@ describe("WarcraftLogsGuildAdapter — attendance pagination", () => {
   });
 });
 
-describe("WarcraftLogsGuildAdapter — roster", () => {
-  it("pages through members and maps WCL classID -> class name", async () => {
+describe("WarcraftLogsGuildAdapter — composition", () => {
+  it("flattens playerDetails role groups, picks dominant spec + maxItemLevel", async () => {
     const query = vi.fn(async (doc: string, vars: Record<string, unknown>) => {
-      if (doc !== GUILD_MEMBERS) throw new Error("unexpected doc");
-      const page = vars.page as number;
-      if (page === 1) {
-        return {
-          guildData: { guild: { members: {
-            total: 3, current_page: 1, last_page: 2, has_more_pages: true,
-            data: [
-              { name: "Koczikson", classID: 6, level: 70 }, // Paladin
-              { name: "Arvuna", classID: 10, level: 70 }, // Warlock
-            ],
-          } } } };
-      }
+      if (doc !== REPORT_COMPOSITION) throw new Error("unexpected doc");
+      expect(vars.code).toBe("RPT");
+      // NOTE the double nesting (data.playerDetails) — matches the live shape.
       return {
-        guildData: { guild: { members: {
-          total: 3, current_page: 2, last_page: 2, has_more_pages: false,
-          data: [{ name: "Bigmacks", classID: 2, level: 68 }], // Druid
-        } } } };
+        reportData: { report: { playerDetails: { data: { playerDetails: {
+          tanks: [
+            { name: "Guntrip", type: "Warrior",
+              specs: [{ spec: "Gladiator", count: 64 }, { spec: "Protection", count: 10 }],
+              minItemLevel: 119, maxItemLevel: 127 },
+          ],
+          healers: [
+            { name: "Lifecoon", type: "Shaman",
+              specs: [{ spec: "Restoration", count: 45 }],
+              minItemLevel: 121, maxItemLevel: 125 },
+          ],
+          dps: [
+            { name: "Kociak", type: "Druid",
+              specs: [{ spec: "Feral", count: 71 }],
+              minItemLevel: 113, maxItemLevel: 120 },
+          ],
+        } } } } },
+      };
     });
 
     const adapter = new WarcraftLogsGuildAdapter(
       { clientId: "x", clientSecret: "y" },
       { query } as unknown as WclQuerier,
     );
-    const roster = await adapter.fetchRoster(809103);
-    expect(query).toHaveBeenCalledTimes(2); // followed pagination
-    expect(roster).toEqual([
-      { name: "Koczikson", className: "Paladin", level: 70 },
-      { name: "Arvuna", className: "Warlock", level: 70 },
-      { name: "Bigmacks", className: "Druid", level: 68 },
+    const comp = await adapter.fetchComposition("RPT");
+    expect(comp).toEqual([
+      { name: "Guntrip", role: MainRole.TANK, className: "Warrior", spec: "Gladiator", maxItemLevel: 127 },
+      { name: "Lifecoon", role: MainRole.HEALER, className: "Shaman", spec: "Restoration", maxItemLevel: 125 },
+      { name: "Kociak", role: MainRole.DPS, className: "Druid", spec: "Feral", maxItemLevel: 120 },
     ]);
+  });
+
+  it("tolerates missing role groups", async () => {
+    const query = vi.fn(async () => ({
+      reportData: { report: { playerDetails: { data: { playerDetails: {
+        dps: [{ name: "Solo", type: "Mage", specs: [{ spec: "Fire", count: 1 }], minItemLevel: 100, maxItemLevel: 110 }],
+      } } } } },
+    }));
+    const adapter = new WarcraftLogsGuildAdapter(
+      { clientId: "x", clientSecret: "y" },
+      { query } as unknown as WclQuerier,
+    );
+    const comp = await adapter.fetchComposition("RPT");
+    expect(comp).toHaveLength(1);
+    expect(comp[0].role).toBe(MainRole.DPS);
+  });
+
+  it("dedups a name in two roles, keeping the role with more fights", async () => {
+    // Bigmacks off-spec tanked 3 fights but DPS'd 70 — he belongs in DPS.
+    const query = vi.fn(async () => ({
+      reportData: { report: { playerDetails: { data: { playerDetails: {
+        tanks: [{ name: "Bigmacks", type: "Druid", specs: [{ spec: "Guardian", count: 3 }], minItemLevel: 120, maxItemLevel: 127 }],
+        dps: [{ name: "Bigmacks", type: "Druid", specs: [{ spec: "Feral", count: 70 }], minItemLevel: 120, maxItemLevel: 127 }],
+      } } } } },
+    }));
+    const adapter = new WarcraftLogsGuildAdapter(
+      { clientId: "x", clientSecret: "y" },
+      { query } as unknown as WclQuerier,
+    );
+    const comp = await adapter.fetchComposition("RPT");
+    expect(comp).toHaveLength(1); // one entry, not two
+    expect(comp[0]).toMatchObject({ name: "Bigmacks", role: MainRole.DPS, spec: "Feral" });
   });
 });
 

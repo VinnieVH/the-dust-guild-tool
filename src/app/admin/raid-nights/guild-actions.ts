@@ -7,12 +7,12 @@ import { IntegrationError } from "@/lib/integrations/errors";
 import { WarcraftLogsGuildAdapter } from "@/lib/integrations/warcraftlogs/guild-adapter";
 import { attendanceRepository } from "@/lib/repositories/attendance-repository";
 import {
+  guildCompositionRepository,
   guildRankRepository,
-  guildRosterRepository,
 } from "@/lib/repositories/guild-rank-repository";
 import { syncAttendance } from "@/lib/services/sync-attendance-service";
+import { syncGuildComposition } from "@/lib/services/sync-guild-composition-service";
 import { syncGuildRank } from "@/lib/services/sync-guild-rank-service";
-import { syncGuildRoster } from "@/lib/services/sync-guild-roster-service";
 import { auth } from "@/lib/auth";
 
 export type GuildSyncState = { error?: string; success?: string };
@@ -40,9 +40,9 @@ export async function refreshGuildDataAction(
     const now = new Date();
     const att = await syncAttendance(guild, attendanceRepository, env.WCL_GUILD_ID);
     const rank = await syncGuildRank(guild, guildRankRepository, env.WCL_GUILD_ID, now);
-    const roster = await syncGuildRoster(
+    const comp = await syncGuildComposition(
       guild,
-      guildRosterRepository,
+      guildCompositionRepository,
       env.WCL_GUILD_ID,
       now,
     );
@@ -53,7 +53,7 @@ export async function refreshGuildDataAction(
       success:
         `Refreshed attendance (${att.nights} nights, ${att.users} raiders, ` +
         `${att.milestonesAwarded} milestones), ${rank.zonesRefreshed} zone rankings, ` +
-        `and ${roster.members} roster members.`,
+        `and composition (${comp.members} raiders from the latest raid).`,
     };
   } catch (err) {
     const message = err instanceof IntegrationError ? err.message : "Guild refresh failed";

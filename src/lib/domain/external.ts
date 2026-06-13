@@ -88,12 +88,18 @@ export interface ExternalGuildAttendance {
   players: Array<{ name: string; present: boolean }>;
 }
 
-// One member of the WCL guild roster (whole guild, NOT filtered by content).
-export interface ExternalGuildMember {
+// One raider in the guild's composition, derived from a report's WCL
+// playerDetails (the role/spec/ilvl panel — who actually raided).
+export interface ExternalCompositionMember {
   name: string;
-  /** Class name resolved from WCL's classID enum (see wclClassName). */
+  /** Role WCL classified them as in the report. */
+  role: MainRole;
+  /** Class name (WCL `type`, e.g. "Druid"). */
   className: string;
-  level: number;
+  /** Dominant played spec that night (e.g. "Feral"). */
+  spec: string;
+  /** Best item level seen in the report (WCL maxItemLevel). */
+  maxItemLevel: number;
 }
 
 // Live guild standing for one zone (display-only).

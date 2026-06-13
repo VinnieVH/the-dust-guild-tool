@@ -1,3 +1,4 @@
+import { MainRole } from "@/lib/domain/enums";
 import { is25ManZone, RAID_25_ZONES } from "@/lib/domain/wow";
 import { db } from "@/lib/db";
 
@@ -51,44 +52,46 @@ export async function getZoneBests(): Promise<ZoneBestView[]> {
   });
 }
 
-// The WCL guild roster, grouped by class for a class-colored grid. Whole guild,
-// NOT filtered by content.
-export interface RosterMember {
+// The guild's raid composition (from the latest report), grouped by role for a
+// Tanks/Healers/DPS layout like WCL's Composition panel. Each raider carries
+// their class (for color), played spec, and best item level.
+export interface CompositionMember {
   name: string;
-  level: number;
-}
-
-export interface RosterClassGroup {
   className: string;
-  members: RosterMember[];
+  spec: string;
+  maxItemLevel: number;
 }
 
-export interface RosterView {
+export interface CompositionView {
   total: number;
   fetchedAt: Date | null;
-  groups: RosterClassGroup[];
+  tanks: CompositionMember[];
+  healers: CompositionMember[];
+  dps: CompositionMember[];
 }
 
-export async function getRoster(): Promise<RosterView> {
-  const rows = await db.guildMember.findMany({
-    orderBy: [{ className: "asc" }, { name: "asc" }],
-    select: { name: true, className: true, level: true, fetchedAt: true },
+export async function getComposition(): Promise<CompositionView> {
+  const rows = await db.guildComposition.findMany({
+    // Within a role, show the best-geared first (matches "who's carrying").
+    orderBy: [{ maxItemLevel: "desc" }, { name: "asc" }],
+    select: { name: true, role: true, className: true, spec: true, maxItemLevel: true, fetchedAt: true },
   });
 
-  const byClass = new Map<string, RosterMember[]>();
-  for (const r of rows) {
-    const list = byClass.get(r.className) ?? [];
-    list.push({ name: r.name, level: r.level });
-    byClass.set(r.className, list);
-  }
-
-  const groups: RosterClassGroup[] = [...byClass.entries()]
-    .map(([className, members]) => ({ className, members }))
-    .sort((a, b) => a.className.localeCompare(b.className));
+  const pick = (role: MainRole): CompositionMember[] =>
+    rows
+      .filter((r) => r.role === role)
+      .map((r) => ({
+        name: r.name,
+        className: r.className,
+        spec: r.spec,
+        maxItemLevel: r.maxItemLevel,
+      }));
 
   return {
     total: rows.length,
     fetchedAt: rows[0]?.fetchedAt ?? null,
-    groups,
+    tanks: pick(MainRole.TANK),
+    healers: pick(MainRole.HEALER),
+    dps: pick(MainRole.DPS),
   };
 }

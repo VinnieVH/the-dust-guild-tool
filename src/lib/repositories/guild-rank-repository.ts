@@ -1,5 +1,5 @@
+import type { GuildCompositionStore } from "@/lib/services/sync-guild-composition-service";
 import type { GuildRankStore } from "@/lib/services/sync-guild-rank-service";
-import type { GuildRosterStore } from "@/lib/services/sync-guild-roster-service";
 import { db } from "@/lib/db";
 
 // Thin Prisma wrapper for the live guild zone rankings (display-only).
@@ -42,17 +42,20 @@ export const guildRankRepository: GuildRankStore = {
   },
 };
 
-// Thin Prisma wrapper for the live guild roster (display-only). Full-snapshot
-// replace so departed members drop out.
-export const guildRosterRepository: GuildRosterStore = {
-  async replaceRoster(members, fetchedAt) {
+// Thin Prisma wrapper for the live guild composition (display-only). Full-
+// snapshot replace from the latest report, so a changed lineup is reflected.
+export const guildCompositionRepository: GuildCompositionStore = {
+  async replaceComposition(members, sourceReportCode, fetchedAt) {
     await db.$transaction([
-      db.guildMember.deleteMany({}),
-      db.guildMember.createMany({
+      db.guildComposition.deleteMany({}),
+      db.guildComposition.createMany({
         data: members.map((m) => ({
           name: m.name,
+          role: m.role,
           className: m.className,
-          level: m.level,
+          spec: m.spec,
+          maxItemLevel: m.maxItemLevel,
+          sourceReportCode,
           fetchedAt,
         })),
       }),

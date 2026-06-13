@@ -130,23 +130,31 @@ export interface WclGuildAttendance {
   };
 }
 
-export interface WclGuildMember {
+// playerDetails (JSON scalar): one entry per raider in a role group.
+export interface WclPlayerDetail {
   name: string;
-  /** WCL's own class-id enum (see wclClassName) — NOT Blizzard's. */
-  classID: number;
-  level: number;
+  /** WCL class name, e.g. "Druid". */
+  type: string;
+  /** Played specs that night with sample counts; dominant = highest count. */
+  specs: Array<{ spec: string; count: number }>;
+  minItemLevel: number;
+  maxItemLevel: number;
 }
 
-export interface WclGuildMembers {
-  guildData: {
-    guild: {
-      members: {
-        total: number;
-        has_more_pages: boolean;
-        current_page: number;
-        last_page: number;
-        data: WclGuildMember[];
-      };
+// NOTE the double nesting: the JSON scalar wraps the role groups under
+// data.playerDetails (verified live — { data: { playerDetails: { tanks, … } } }).
+export interface WclReportComposition {
+  reportData: {
+    report: {
+      playerDetails: {
+        data: {
+          playerDetails: {
+            tanks?: WclPlayerDetail[];
+            healers?: WclPlayerDetail[];
+            dps?: WclPlayerDetail[];
+          };
+        };
+      } | null;
     } | null;
   };
 }

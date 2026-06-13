@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getRoster, getZoneBests } from "@/lib/repositories/guild-queries";
+import { MainRole } from "@/lib/domain/enums";
+import { getComposition, getZoneBests } from "@/lib/repositories/guild-queries";
 import { db } from "@/lib/db";
 
 // Guild dashboard read models against REAL Postgres. The risk these guard:
@@ -7,13 +8,13 @@ import { db } from "@/lib/db";
 //     filter (it doesn't share the speed-record pass's code). The Kara-exclusion
 //     here is the exact bug class we hardened across the achievement engine, so
 //     it needs its own regression guard.
-//   - getRoster groups the whole guild by class (NOT content-filtered).
+//   - getComposition groups the latest-raid lineup by role, gear-sorted.
 const PFX = "itest-gq-";
 
 async function cleanup() {
   await db.raidNight.deleteMany({ where: { raidHelperEventId: { startsWith: PFX } } });
   await db.guildZoneRanking.deleteMany({ where: { zoneId: { in: [1056] } } });
-  await db.guildMember.deleteMany({ where: { name: { startsWith: PFX } } });
+  await db.guildComposition.deleteMany({ where: { name: { startsWith: PFX } } });
 }
 
 beforeEach(cleanup);
@@ -66,30 +67,29 @@ describe("getZoneBests (live DB)", () => {
   });
 });
 
-describe("getRoster (live DB)", () => {
-  it("groups the whole guild by class with the right total", async () => {
+describe("getComposition (live DB)", () => {
+  it("groups by role and sorts each role by item level desc", async () => {
     const now = new Date();
-    await db.guildMember.createMany({
+    await db.guildComposition.createMany({
       data: [
-        { name: `${PFX}Drood1`, className: "Druid", level: 70, fetchedAt: now },
-        { name: `${PFX}Drood2`, className: "Druid", level: 60, fetchedAt: now },
-        { name: `${PFX}Pala1`, className: "Paladin", level: 70, fetchedAt: now },
+        { name: `${PFX}Tank1`, role: MainRole.TANK, className: "Warrior", spec: "Protection", maxItemLevel: 127, sourceReportCode: `${PFX}rep`, fetchedAt: now },
+        { name: `${PFX}Dps1`, role: MainRole.DPS, className: "Druid", spec: "Feral", maxItemLevel: 120, sourceReportCode: `${PFX}rep`, fetchedAt: now },
+        { name: `${PFX}Dps2`, role: MainRole.DPS, className: "Mage", spec: "Fire", maxItemLevel: 131, sourceReportCode: `${PFX}rep`, fetchedAt: now },
+        { name: `${PFX}Heal1`, role: MainRole.HEALER, className: "Priest", spec: "Holy", maxItemLevel: 125, sourceReportCode: `${PFX}rep`, fetchedAt: now },
       ],
     });
 
-    const roster = await getRoster();
-    // Other roster rows may exist; assert on OUR seeded members.
-    const ours = roster.groups
-      .map((g) => ({
-        c: g.className,
-        members: g.members.filter((m) => m.name.startsWith(PFX)),
-      }))
-      .filter((g) => g.members.length > 0);
+    const comp = await getComposition();
+    const ours = (m: { name: string }) => m.name.startsWith(PFX);
+    const tanks = comp.tanks.filter(ours);
+    const healers = comp.healers.filter(ours);
+    const dps = comp.dps.filter(ours);
 
-    const druid = ours.find((g) => g.c === "Druid")!;
-    expect(druid.members).toHaveLength(2);
-    const pala = ours.find((g) => g.c === "Paladin")!;
-    expect(pala.members).toHaveLength(1);
-    expect(pala.members[0].name).toBe(`${PFX}Pala1`);
+    expect(tanks).toHaveLength(1);
+    expect(healers).toHaveLength(1);
+    expect(dps).toHaveLength(2);
+    // DPS sorted by item level desc: Dps2 (131) before Dps1 (120).
+    expect(dps.map((d) => d.name)).toEqual([`${PFX}Dps2`, `${PFX}Dps1`]);
+    expect(dps[0]).toMatchObject({ className: "Mage", spec: "Fire", maxItemLevel: 131 });
   });
 });

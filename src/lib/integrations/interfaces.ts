@@ -1,6 +1,6 @@
 import type {
+  ExternalCompositionMember,
   ExternalGuildAttendance,
-  ExternalGuildMember,
   ExternalRaidEvent,
   ExternalReport,
   ExternalReservation,
@@ -32,6 +32,6 @@ export interface IGuildSource {
   fetchAttendance(guildId: number): Promise<ExternalGuildAttendance[]>;
   /** Current world/region/server speed + progress ranks for one zone. */
   fetchZoneRanking(guildId: number, zoneId: number): Promise<ExternalZoneRanking>;
-  /** The guild's full member roster (whole guild, paginated internally). */
-  fetchRoster(guildId: number): Promise<ExternalGuildMember[]>;
+  /** Raid composition (role/spec/ilvl) derived from one report's playerDetails. */
+  fetchComposition(reportCode: string): Promise<ExternalCompositionMember[]>;
 }

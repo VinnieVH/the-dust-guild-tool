@@ -3,8 +3,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageContainer } from "@/components/ui/page-container";
 import { classColor } from "@/lib/domain/wow";
 import {
-  getRoster,
+  getComposition,
   getZoneBests,
+  type CompositionMember,
   type ZoneBestView,
 } from "@/lib/repositories/guild-queries";
 
@@ -46,8 +47,40 @@ function hasAnyRank(z: ZoneBestView): boolean {
   );
 }
 
+// One role column (Tanks / Healers / DPS) — names class-colored, spec + item
+// level alongside, like WCL's Composition panel.
+function RoleColumn({
+  title,
+  members,
+}: {
+  title: string;
+  members: CompositionMember[];
+}) {
+  return (
+    <div>
+      <h3 className="mb-2 flex items-baseline gap-2 font-semibold text-fel-300">
+        {title}
+        <span className="text-sm font-normal text-fel-200">{members.length}</span>
+      </h3>
+      <ul className="flex flex-col gap-1">
+        {members.map((m) => (
+          <li key={m.name} className="flex items-center justify-between gap-3 text-sm">
+            <span style={{ color: classColor(m.className) }}>
+              <span className="font-medium">{m.name}</span>
+              {m.spec && <span className="ml-1.5 text-xs opacity-70">{m.spec}</span>}
+            </span>
+            <span className="rounded bg-legion-900 px-1.5 py-0.5 text-xs font-semibold text-fel-200">
+              {m.maxItemLevel}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default async function GuildPage() {
-  const [zones, roster] = await Promise.all([getZoneBests(), getRoster()]);
+  const [zones, comp] = await Promise.all([getZoneBests(), getComposition()]);
 
   const anyData = zones.some((z) => z.bestClearMs != null || hasAnyRank(z));
 
@@ -137,48 +170,32 @@ export default async function GuildPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 flex items-baseline gap-2 font-semibold text-fel-300">
-          Roster
-          {roster.total > 0 && (
+        <h2 className="mb-1 flex items-baseline gap-2 font-semibold text-fel-300">
+          Composition
+          {comp.total > 0 && (
             <span className="text-sm font-normal text-fel-200">
-              · {roster.total} members
+              · {comp.total} raiders
             </span>
           )}
         </h2>
-        {roster.groups.length === 0 ? (
-          <EmptyState title="No roster synced yet">
-            “Refresh guild data” pulls the guild’s Warcraft Logs roster.
+        {comp.total === 0 ? (
+          <EmptyState title="No composition synced yet">
+            “Refresh guild data” reads the lineup from the latest raid’s Warcraft
+            Logs report.
           </EmptyState>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {roster.groups.map((g) => (
-                <Card key={g.className}>
-                  <h3
-                    className="mb-2 text-sm font-semibold"
-                    style={{ color: classColor(g.className) }}
-                  >
-                    {g.className}{" "}
-                    <span className="text-fel-200">({g.members.length})</span>
-                  </h3>
-                  <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
-                    {g.members.map((m) => (
-                      <li key={m.name} style={{ color: classColor(g.className) }}>
-                        {m.name}
-                        {m.level !== 70 && (
-                          <span className="ml-0.5 text-[10px] text-fel-200">
-                            {m.level}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              ))}
-            </div>
-            {roster.fetchedAt && (
+            <p className="mb-3 text-xs text-fel-200">Based on our most recent raid.</p>
+            <Card>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <RoleColumn title="Tanks" members={comp.tanks} />
+                <RoleColumn title="Healers" members={comp.healers} />
+                <RoleColumn title="DPS" members={comp.dps} />
+              </div>
+            </Card>
+            {comp.fetchedAt && (
               <p className="mt-3 text-[10px] text-fel-200">
-                Roster as of {dateFmt.format(roster.fetchedAt)}
+                as of {dateFmt.format(comp.fetchedAt)}
               </p>
             )}
           </>

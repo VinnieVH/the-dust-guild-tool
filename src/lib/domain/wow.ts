@@ -40,31 +40,6 @@ export function classColor(wowClass: string): string {
   return CLASS_COLORS[wowClass] ?? "#FFFFFF";
 }
 
-// WCL's OWN class-id enum (NOT Blizzard's) — verified live against the WCL
-// gameData.classes query, not memory. The roster's `classID` keys into this to
-// recover a class name, which then keys CLASS_COLORS. Includes retail classes
-// WCL lists (DK/Monk/DH/Evoker) for completeness even though TBC has none.
-const WCL_CLASS_BY_ID: Record<number, string> = {
-  1: "Death Knight",
-  2: "Druid",
-  3: "Hunter",
-  4: "Mage",
-  5: "Monk",
-  6: "Paladin",
-  7: "Priest",
-  8: "Rogue",
-  9: "Shaman",
-  10: "Warlock",
-  11: "Warrior",
-  12: "Demon Hunter",
-  13: "Evoker",
-};
-
-/** WCL classID -> class name, or "Unknown" for an unmapped id. */
-export function wclClassName(classID: number): string {
-  return WCL_CLASS_BY_ID[classID] ?? "Unknown";
-}
-
 // Boss counts per WCL zone NAME (TBC), for the Clean Sweep guild achievement
 // ("all bosses killed"). Keyed by the zone name WCL reports — note SSC/TK is a
 // combined WCL zone (one "clear" spans both raids). Unknown zones return null,

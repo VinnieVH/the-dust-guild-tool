@@ -105,24 +105,15 @@ export const GUILD_ATTENDANCE = /* GraphQL */ `
   }
 `;
 
-// One page of the guild's full member roster (the whole guild, NOT filtered by
-// content). classID is WCL's own class enum. Verified live against guild 809103
-// (41 members). Paginated like attendance.
-export const GUILD_MEMBERS = /* GraphQL */ `
-  query GuildMembers($guildId: Int!, $page: Int!) {
-    guildData {
-      guild(id: $guildId) {
-        members(page: $page) {
-          total
-          has_more_pages
-          current_page
-          last_page
-          data {
-            name
-            classID
-            level
-          }
-        }
+// A report's raid composition (the WCL "Composition" panel data): players
+// grouped by role, each with their played spec(s) and item-level range. A JSON
+// scalar ({ data: { tanks, dps, healers } }). Needs a time window; we pass the
+// report's full range. Verified live against report NYh79GKXvVqMA6rW.
+export const REPORT_COMPOSITION = /* GraphQL */ `
+  query ReportComposition($code: String!, $startTime: Float!, $endTime: Float!) {
+    reportData {
+      report(code: $code) {
+        playerDetails(startTime: $startTime, endTime: $endTime)
       }
     }
   }

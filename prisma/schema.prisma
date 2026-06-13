@@ -278,19 +278,27 @@ model GuildZoneRanking {
   @@map("guild_zone_rankings")
 }
 
-// The guild's full WCL member roster (display-only, NEVER awarded; the WHOLE
-// guild, NOT filtered by 25-man content — the 25-man rule is about content, not
-// membership). Refreshed each guild sync via guildData.guild.members. One row
-// per member name (the WCL roster key). className is resolved from WCL's classID
-// enum at the adapter (see wclClassName).
-model GuildMember {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  className String
-  level     Int
-  fetchedAt DateTime
+// The guild's raid composition, derived from the most recent 25-man report's
+// WCL playerDetails (display-only, NEVER awarded). Mirrors WCL's "Composition"
+// panel: each raider grouped by role, with their played spec and best item
+// level that night. A full-snapshot replace per refresh (one row per character
+// name in the source report). NOT the static guild registration list — this is
+// who actually raided, like the screenshot.
+model GuildComposition {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  /** TANK | HEALER | DPS — the role WCL classified them as in the report. */
+  role             MainRole
+  className        String
+  /** Dominant played spec that night (e.g. "Feral", "Restoration"). */
+  spec             String
+  /** Best item level seen in the source report (WCL maxItemLevel). */
+  maxItemLevel     Int
+  /** WCL report code this snapshot came from (the most recent 25-man raid). */
+  sourceReportCode String
+  fetchedAt        DateTime
 
-  @@map("guild_members")
+  @@map("guild_composition")
 }
 
 // ---------------------------------------------------------------------------
