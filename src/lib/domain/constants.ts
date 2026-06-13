@@ -6,12 +6,11 @@
  *  for the per-role crowns and Iron Man. Signed off at 75%. */
 export const PARTICIPATION_THRESHOLD = 0.75;
 
-/** Floor Inspector (affectionate banter) only fires on a genuine outlier:
- *  the most-deaths player needs at least this many deaths AND at least this
- *  multiple of the runner-up's deaths. Otherwise NO award (a clean/normal
- *  night produces none). Keeps it fun, never a "worst" verdict. */
+/** Floor Inspector goes to the player with the most deaths of the night,
+ *  provided they died at least this many times. Below the floor (a near-clean
+ *  night) it isn't given. See the 2026-06-14 reversal note in
+ *  docs/achievement-design.md — this used to be outlier-gated. */
 export const FLOOR_INSPECTOR_MIN_DEATHS = 3;
-export const FLOOR_INSPECTOR_OUTLIER_MULTIPLE = 2;
 
 /** Well-Oiled Machine (guild): the night's raid-average parse must clear this
  *  to celebrate a high-execution night collectively. */

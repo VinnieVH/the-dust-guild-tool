@@ -75,7 +75,7 @@ export const PERSONAL_ACHIEVEMENTS: AchievementDef[] = [
   {
     key: "floor-inspector",
     name: "Floor Inspector",
-    description: "The floor missed you. (Awarded only on a genuinely unlucky night.)",
+    description: "Most deaths of the night. The floor missed you.",
     icon: "💀",
     category: "personal",
   },

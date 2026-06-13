@@ -96,16 +96,7 @@ describe("achievement engine — effort & utility", () => {
   });
 });
 
-describe("achievement engine — Floor Inspector (outlier-gated, all-positive)", () => {
-  it("does NOT award on a normal night (no clear outlier)", () => {
-    // 2 vs 1 deaths — not an outlier (below the 3-death floor anyway).
-    const scores = [
-      score({ characterId: "a", deaths: 2 }),
-      score({ characterId: "b", deaths: 1 }),
-    ];
-    expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual([]);
-  });
-
+describe("achievement engine — Floor Inspector (most deaths, min-3 floor)", () => {
   it("does NOT award when the top is below the death floor", () => {
     const scores = [
       score({ characterId: "a", deaths: 2 }), // < 3 floor
@@ -114,29 +105,41 @@ describe("achievement engine — Floor Inspector (outlier-gated, all-positive)",
     expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual([]);
   });
 
-  it("does NOT award when everyone is tied at the top (no outlier)", () => {
+  it("does NOT award when nobody died", () => {
     const scores = [
-      score({ characterId: "a", deaths: 4 }),
-      score({ characterId: "b", deaths: 4 }),
+      score({ characterId: "a", deaths: 0 }),
+      score({ characterId: "b", deaths: 0 }),
     ];
     expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual([]);
   });
 
-  it("awards only on a genuine outlier (≥3 AND ≥2× runner-up)", () => {
+  it("awards the most deaths once the floor is cleared (no outlier gate)", () => {
+    // 3 vs 2 — used to be no award (not an outlier); now the top wins.
     const scores = [
-      score({ characterId: "klutz", deaths: 6 }),
-      score({ characterId: "b", deaths: 2 }), // 6 >= 3 and 6 >= 2*2 ✓
-      score({ characterId: "c", deaths: 1 }),
+      score({ characterId: "klutz", deaths: 3 }),
+      score({ characterId: "b", deaths: 2 }),
     ];
     expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual(["klutz"]);
   });
 
-  it("does NOT award a high-but-not-outlier top (5 vs 3 = <2×)", () => {
+  it("awards a high-but-not-outlier top (5 vs 3 — used to be skipped)", () => {
     const scores = [
       score({ characterId: "a", deaths: 5 }),
-      score({ characterId: "b", deaths: 3 }), // 5 < 3*2
+      score({ characterId: "b", deaths: 3 }),
     ];
-    expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual([]);
+    expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual(["a"]);
+  });
+
+  it("breaks a top-tie deterministically (single winner)", () => {
+    const scores = [
+      score({ characterId: "a", deaths: 4 }),
+      score({ characterId: "b", deaths: 4 }),
+    ];
+    const winners = awardsFor("floor-inspector", runNightEngine(scores, ctx));
+    expect(winners).toHaveLength(1);
+    expect(["a", "b"]).toContain(winners[0]);
+    // Deterministic: same scores + night => same winner on a re-run.
+    expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual(winners);
   });
 });
 
