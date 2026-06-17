@@ -558,8 +558,16 @@ docker-compose Postgres untouched; **only production points at the hosted DB.**
   against the direct URL with `OFFICER_DISCORD_IDS` set), NOT in the build (the
   seed is not idempotent for officer promotion the way migrations are, and
   re-seeding on every deploy is wrong).
-- **Accept:** a fresh deploy applies all 14 migrations to the Neon DB before
-  serving; a redeploy with no new migrations is a no-op.
+- **One-time backfill on cutover** (right after the seed): the
+  `add_performance_total_deaths` migration defaults existing rows to
+  `totalDeaths = 0`, and auto-ingest skips already-ingested report codes — so
+  Floor Inspector will be WRONG on prod until you run
+  `yarn tsx scripts/refetch-wcl-reports.mts` against the prod DB once. It
+  re-fetches every stored report from WCL (repopulating `totalDeaths`) and
+  re-runs the engine. Idempotent; only needed once after this migration ships.
+- **Accept:** a fresh deploy applies all migrations to the Neon DB before
+  serving; a redeploy with no new migrations is a no-op; the one-time refetch
+  has run so Floor Inspector reflects real (wipe-inclusive) death counts.
 
 ### Step 6.3 — Function duration for the heavy cron
 
