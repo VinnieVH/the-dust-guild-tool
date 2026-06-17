@@ -201,6 +201,8 @@ export interface WclReportDetail {
     report: {
       rankings: { data: WclFightRanking[] };
       deaths: WclDeathsTable;
+      /** Report-wide deaths (kills + wipes + trash), scoped by time span. */
+      totalDeaths: WclDeathsTable;
       interrupts: WclEventStream<WclInterruptEvent>;
       dispels: WclEventStream<WclDispelEvent>;
       combatantInfo: WclEventStream<WclCombatantInfoEvent>;

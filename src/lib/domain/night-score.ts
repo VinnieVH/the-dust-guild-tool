@@ -12,7 +12,10 @@ export interface ReportPerformance {
   characterName: string;
   role: MainRole;
   parseAvg: number;
+  /** Boss-kill-pull deaths (Iron Man + participation). */
   deaths: number;
+  /** Whole-report deaths incl. wipes + trash (Floor Inspector only). */
+  totalDeaths: number;
   interrupts: number;
   dispels: number;
   hadFlask: boolean;
@@ -31,7 +34,10 @@ export interface NightScore {
   role: MainRole;
   /** Fight-weighted mean parse across the night (0-100). */
   parseAvg: number;
+  /** Boss-kill-pull deaths summed across the night (Iron Man + participation). */
   deaths: number;
+  /** Whole-report deaths summed across the night (Floor Inspector only). */
+  totalDeaths: number;
   interrupts: number;
   dispels: number;
   /** Consumable presence = OR across reports (had it in any report). */

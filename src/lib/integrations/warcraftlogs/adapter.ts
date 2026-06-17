@@ -44,10 +44,17 @@ export class WarcraftLogsAdapter implements IPerformanceSource {
       return mapReport(meta, emptyDetail());
     }
 
+    // Report-wide deaths table is scoped by a RELATIVE time span (see the
+    // gotcha comment on REPORT_DETAIL's totalDeaths): whole report = 0 ..
+    // (endTime - startTime). meta carries the absolute epoch bounds.
+    const { startTime, endTime } = meta.reportData.report;
+    const reportSpan = endTime - startTime;
+
     const detail = await this.client.query<WclReportDetail>(REPORT_DETAIL, {
       code: reportCode,
       fids,
       startTime: EVENTS_START_TIME,
+      reportSpan,
     });
     const report = detail.reportData.report;
     if (!report) {
@@ -126,6 +133,7 @@ function emptyDetail(): WclReportDetail {
       report: {
         rankings: { data: [] },
         deaths: { data: { entries: [] } },
+        totalDeaths: { data: { entries: [] } },
         interrupts: { data: [], nextPageTimestamp: null },
         dispels: { data: [], nextPageTimestamp: null },
         combatantInfo: { data: [], nextPageTimestamp: null },

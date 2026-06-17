@@ -44,6 +44,7 @@ export interface WclSyncStore {
       parseAvg: number;
       dpsOrHps: number;
       deaths: number;
+      totalDeaths: number;
       interrupts: number;
       dispels: number;
       hadFlask: boolean;
@@ -104,6 +105,7 @@ export async function syncWclReport(
       parseAvg: p.parseAvg,
       dpsOrHps: p.dpsOrHps,
       deaths: p.deaths,
+      totalDeaths: p.totalDeaths,
       interrupts: p.interrupts,
       dispels: p.dispels,
       hadFlask: p.hadFlask,

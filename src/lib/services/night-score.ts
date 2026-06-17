@@ -79,6 +79,7 @@ export function scoreNight(
       role: dominantRole(perfs),
       parseAvg,
       deaths: perfs.reduce((a, p) => a + p.deaths, 0),
+      totalDeaths: perfs.reduce((a, p) => a + p.totalDeaths, 0),
       interrupts: perfs.reduce((a, p) => a + p.interrupts, 0),
       dispels: perfs.reduce((a, p) => a + p.dispels, 0),
       hadFlask,

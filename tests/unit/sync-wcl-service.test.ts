@@ -13,12 +13,12 @@ function report(over: Partial<ExternalReport> = {}): ExternalReport {
     performances: [
       {
         name: "Vex", role: MainRole.DPS, parseAvg: 90, dpsOrHps: 1000,
-        deaths: 0, interrupts: 1, dispels: 0,
+        deaths: 0, totalDeaths: 0, interrupts: 1, dispels: 0,
         hadFlask: true, hadFood: true, hadElixir: false, fightsPresent: 2,
       },
       {
         name: "Ghostname", role: MainRole.HEALER, parseAvg: 70, dpsOrHps: 0,
-        deaths: 1, interrupts: 0, dispels: 3,
+        deaths: 1, totalDeaths: 4, interrupts: 0, dispels: 3,
         hadFlask: false, hadFood: false, hadElixir: false, fightsPresent: 2,
       },
     ],

@@ -40,6 +40,7 @@ function meta(
 function emptyStreams() {
   return {
     deaths: { data: { entries: [] } },
+    totalDeaths: { data: { entries: [] } },
     interrupts: { data: [], nextPageTimestamp: null },
     dispels: { data: [], nextPageTimestamp: null },
     combatantInfo: { data: [], nextPageTimestamp: null },
@@ -157,6 +158,10 @@ describe("WCL mapper — pure logic", () => {
             { name: "Vex", id: 1, fight: 1 },
             { name: "Vex", id: 1, fight: 1 },
           ] } },
+          totalDeaths: { data: { entries: [
+            { name: "Vex", id: 1, fight: 1 },
+            { name: "Vex", id: 1, fight: 1 },
+          ] } },
           interrupts: { data: [
             { type: "interrupt", sourceID: 2, fight: 1 },
             { type: "interrupt", sourceID: 2, fight: 1 },
@@ -199,6 +204,7 @@ describe("WCL mapper — pure logic", () => {
             ],
           },
           deaths: { data: { entries: [] } },
+          totalDeaths: { data: { entries: [] } },
           interrupts: { data: [], nextPageTimestamp: null },
           dispels: { data: [], nextPageTimestamp: null },
           combatantInfo: { data: [
@@ -274,6 +280,7 @@ describe("WCL mapper — pure logic", () => {
         report: {
           rankings: { data: [] },
           deaths: { data: { entries: [{ name: "Ghost", id: 7, fight: 1 }] } },
+          totalDeaths: { data: { entries: [{ name: "Ghost", id: 7, fight: 1 }] } },
           interrupts: { data: [], nextPageTimestamp: null },
           dispels: { data: [], nextPageTimestamp: null },
           combatantInfo: { data: [], nextPageTimestamp: null },
@@ -291,6 +298,47 @@ describe("WCL mapper — pure logic", () => {
     expect(ghost).toBeDefined();
     expect(ghost!.deaths).toBe(1);
     expect(ghost!.fightsPresent).toBe(1);
+  });
+
+  it("totalDeaths is a LOOKUP — a trash-only death name mints no performer", () => {
+    // "Trashy" appears ONLY in the report-wide totalDeaths table (died to trash),
+    // never in a kill fight, a parse, or the kill-scoped deaths table. They must
+    // NOT become a phantom performance (which would also pollute the unmatched
+    // queue). totalDeaths is applied as a lookup on kill-fight performers only.
+    const detail: WclReportDetail = {
+      reportData: {
+        report: {
+          rankings: { data: [] },
+          deaths: { data: { entries: [{ name: "Vex", id: 1, fight: 1 }] } },
+          totalDeaths: {
+            data: {
+              entries: [
+                { name: "Vex", id: 1, fight: 1 },
+                { name: "Vex", id: 1, fight: 1 }, // a wipe death too
+                { name: "Trashy", id: 99, fight: 0 }, // trash-only, no kill-fight presence
+              ],
+            },
+          },
+          interrupts: { data: [], nextPageTimestamp: null },
+          dispels: { data: [], nextPageTimestamp: null },
+          combatantInfo: { data: [], nextPageTimestamp: null },
+        },
+      },
+    };
+    const report = mapReport(
+      meta({
+        actors: [{ id: 1, name: "Vex", subType: "Warrior" }],
+        fights: [{ id: 1, kill: true, friendlyPlayers: [1] }],
+      }),
+      detail,
+    );
+    // Trashy must NOT exist as a performer.
+    expect(report.performances.find((p) => p.name === "Trashy")).toBeUndefined();
+    // Vex is a real performer; totalDeaths counts ALL their deaths (2), deaths
+    // counts only the kill-pull one (1).
+    const vex = report.performances.find((p) => p.name === "Vex")!;
+    expect(vex.deaths).toBe(1);
+    expect(vex.totalDeaths).toBe(2);
   });
 
   it("handles a report with no kills (empty but valid)", () => {

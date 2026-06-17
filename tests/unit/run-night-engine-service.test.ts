@@ -14,6 +14,7 @@ function rp(over: Partial<ReportPerformance> = {}): ReportPerformance {
     role: MainRole.DPS,
     parseAvg: 90,
     deaths: 0,
+    totalDeaths: 0,
     interrupts: 0,
     dispels: 0,
     hadFlask: false,

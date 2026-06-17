@@ -43,11 +43,19 @@ export const REPORT_DETAIL = /* GraphQL */ `
     $code: String!
     $fids: [Int]!
     $startTime: Float!
+    $reportSpan: Float!
   ) {
     reportData {
       report(code: $code) {
         rankings(compare: Parses, fightIDs: $fids)
         deaths: table(dataType: Deaths, fightIDs: $fids)
+        # Floor Inspector counts EVERY death in the log (kills + wipes + trash),
+        # so this table is scoped to the whole report by TIME, not by fight ids.
+        # GOTCHA: WCL table start/end are RELATIVE offsets from report start (ms),
+        # NOT absolute epoch — so the whole report is 0 .. (endTime - startTime).
+        # Passing absolute timestamps silently returns []. $reportSpan is that
+        # difference, computed in the adapter. Do NOT "fix" this to absolute.
+        totalDeaths: table(dataType: Deaths, startTime: 0, endTime: $reportSpan)
         interrupts: events(
           dataType: Interrupts
           fightIDs: $fids

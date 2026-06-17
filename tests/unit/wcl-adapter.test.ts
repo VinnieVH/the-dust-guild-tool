@@ -54,6 +54,7 @@ describe("WarcraftLogsAdapter — event pagination", () => {
             report: {
               rankings: rankings(),
               deaths: { data: { entries: [] } },
+              totalDeaths: { data: { entries: [] } },
               interrupts: {
                 data: [{ type: "interrupt", sourceID: 1, fight: 5 }],
                 nextPageTimestamp: 1000, // <-- more pages

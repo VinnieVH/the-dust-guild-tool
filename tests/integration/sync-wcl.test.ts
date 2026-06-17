@@ -31,7 +31,7 @@ function report(): ExternalReport {
   // A 9-of-10 night: 2 DPS, 1 healer, 1 tank, all present all 9 fights. Short of
   // a clean sweep (SSC/TK = 10 bosses) so clean-sweep stays off in this test.
   const base = {
-    deaths: 0, interrupts: 0, dispels: 0,
+    deaths: 0, totalDeaths: 0, interrupts: 0, dispels: 0,
     hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 9,
   };
   return {
@@ -288,7 +288,7 @@ describe("multi-zone synthesized night (live DB)", () => {
   // server may be repopulating — these tables aren't PFX-scopable).
   function clear(suffix: string, zone: string, bosses: number, clearMs: number): ExternalReport {
     const base = {
-      deaths: 0, interrupts: 0, dispels: 0,
+      deaths: 0, totalDeaths: 0, interrupts: 0, dispels: 0,
       hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: bosses,
     };
     return {

@@ -54,6 +54,16 @@ describe("WCL mapper (recorded fixture)", () => {
     }
   });
 
+  it("counts ALL deaths (kills + wipes + trash) into totalDeaths, separate from kill-pull deaths", () => {
+    // Machelo died 11 times across the whole report (the wipe-night reality this
+    // award exists for) — far more than his boss-kill-pull `deaths`. Floor
+    // Inspector scores totalDeaths; Iron Man/participation keep `deaths`.
+    const machelo = report.performances.find((p) => p.name === "Machelo");
+    expect(machelo).toBeDefined();
+    expect(machelo!.totalDeaths).toBe(11);
+    expect(machelo!.totalDeaths).toBeGreaterThan(machelo!.deaths);
+  });
+
   it("counts successful interrupts by source (Kyrem = 4)", () => {
     const kyrem = report.performances.find((p) => p.name === "Kyrem");
     expect(kyrem?.interrupts).toBe(4);

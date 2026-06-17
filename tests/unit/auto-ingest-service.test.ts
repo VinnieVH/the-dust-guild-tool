@@ -33,7 +33,7 @@ const perfSource: IPerformanceSource = {
     clearMs: 3_600_000,
     performances: [
       { name: "Vex", role: MainRole.DPS, parseAvg: 90, dpsOrHps: 1, deaths: 0,
-        interrupts: 0, dispels: 0, hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 11 },
+        totalDeaths: 0, interrupts: 0, dispels: 0, hadFlask: true, hadFood: true, hadElixir: true, fightsPresent: 11 },
     ],
   })),
 };

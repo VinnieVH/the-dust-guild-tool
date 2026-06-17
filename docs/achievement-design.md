@@ -208,7 +208,15 @@ mutate. Backfill / out-of-order ingest must yield identical streaks.
 
 | Award | Criterion | Gate | Who shines | Confidence |
 |---|---|---|---|---|
-| 💀 **Floor Inspector** | Most deaths of the night | deaths ≥ 3 (the min-deaths floor); else **no award** | affectionate ribbing; "the floor missed you" | ✅ |
+| 💀 **Floor Inspector** | Most **total** deaths of the night | totalDeaths ≥ 3 (the min-deaths floor); else **no award** | affectionate ribbing; "the floor missed you" | ✅ |
+
+> **Counts ALL deaths, not just boss-kill deaths (2026-06-17).** Floor Inspector
+> scores `totalDeaths` — every death in the whole report span (kills + wipes +
+> trash), matching WCL's "Total Deaths by Player" table. The kill-pull-only
+> `deaths` field (which Iron Man and participation use) misses wipe nights
+> entirely — it tops out around 5 where the real total is 12+. The adapter
+> fetches the report-wide deaths table by relative time span; see the gotcha
+> comment on `REPORT_DETAIL.totalDeaths`.
 
 Most deaths wins; ties are broken deterministically (seeded by night +
 achievement key, so re-runs pick the same winner). The min-3 floor means a

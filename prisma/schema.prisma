@@ -185,7 +185,13 @@ model PlayerPerformance {
   role          MainRole
   parseAvg      Float
   dpsOrHps      Float
+  // deaths = deaths on BOSS KILL pulls only (drives parses/Iron Man/participation
+  // scope). totalDeaths = every death in the whole report span — kills, wipes AND
+  // trash — used only by Floor Inspector ("most deaths of the night"). They differ
+  // a lot (a wipe-heavy night can be 5x). Default 0 for rows ingested before the
+  // field existed; a re-fetch repopulates it.
   deaths        Int
+  totalDeaths   Int        @default(0)
   interrupts    Int
   dispels       Int
   // Consumable presence (Fully Buffed) — self-applied + allowlist classified by

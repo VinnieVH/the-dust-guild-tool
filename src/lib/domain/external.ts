@@ -63,7 +63,11 @@ export interface ExternalPerformance {
    *  Capturing true HPS is deferred to the 4.5 UI (would need a Healing table
    *  query). Don't treat 0 as "did nothing". */
   dpsOrHps: number;
+  /** Deaths on boss KILL pulls only. Drives Iron Man + participation scope. */
   deaths: number;
+  /** Every death in the whole report (kills + wipes + trash). Floor Inspector
+   *  only. Differs a lot from `deaths` on a wipe-heavy night. */
+  totalDeaths: number;
   /** Successful interrupts (counted from interrupt events by source). */
   interrupts: number;
   /** Dispels performed (counted from dispel events by source). */

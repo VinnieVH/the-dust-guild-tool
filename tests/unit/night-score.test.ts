@@ -10,6 +10,7 @@ function perf(over: Partial<ReportPerformance> = {}): ReportPerformance {
     role: MainRole.DPS,
     parseAvg: 80,
     deaths: 0,
+    totalDeaths: 0,
     interrupts: 0,
     dispels: 0,
     hadFlask: false,
@@ -50,15 +51,16 @@ describe("scoreNight", () => {
     expect(below[0].eligible).toBe(false);
   });
 
-  it("sums deaths/interrupts/dispels across reports", () => {
+  it("sums deaths/totalDeaths/interrupts/dispels across reports", () => {
     const scores = scoreNight(
       [
-        perf({ deaths: 1, interrupts: 2, dispels: 0 }),
-        perf({ deaths: 2, interrupts: 1, dispels: 3 }),
+        perf({ deaths: 1, totalDeaths: 4, interrupts: 2, dispels: 0 }),
+        perf({ deaths: 2, totalDeaths: 5, interrupts: 1, dispels: 3 }),
       ],
       2,
     );
     expect(scores[0].deaths).toBe(3);
+    expect(scores[0].totalDeaths).toBe(9);
     expect(scores[0].interrupts).toBe(3);
     expect(scores[0].dispels).toBe(3);
   });

@@ -112,9 +112,20 @@ export function mapReport(
   }
 
   // --- Count deaths by character name ---
+  // deaths = boss KILL pulls only (the fid-scoped table). Drives parses/Iron
+  // Man/participation scope; legitimately a performer signal (see allNames).
   const deathsByName = new Map<string, number>();
   for (const d of detailReport.deaths.data.entries) {
     deathsByName.set(d.name, (deathsByName.get(d.name) ?? 0) + 1);
+  }
+  // totalDeaths = EVERY death in the report span (kills + wipes + trash). Used
+  // ONLY by Floor Inspector. This set includes trash-only deaths, pets, and
+  // NPCs that are NOT kill-fight performers — so it is applied strictly as a
+  // LOOKUP on performers established below, and is deliberately NOT unioned into
+  // `allNames` (that would mint phantom performances + unmatched-queue entries).
+  const totalDeathsByName = new Map<string, number>();
+  for (const d of detailReport.totalDeaths.data.entries) {
+    totalDeathsByName.set(d.name, (totalDeathsByName.get(d.name) ?? 0) + 1);
   }
 
   // --- Count successful interrupts/dispels by source actor -> name ---
@@ -187,6 +198,8 @@ export function mapReport(
       parseAvg: mean(samples.map((s) => s.rankPercent)),
       dpsOrHps: mean(samples.map((s) => s.amount)),
       deaths: deathsByName.get(name) ?? 0,
+      // Pure lookup: a performer's total deaths if WCL recorded any, else 0.
+      totalDeaths: totalDeathsByName.get(name) ?? 0,
       interrupts: interruptsByName.get(name) ?? 0,
       dispels: dispelsByName.get(name) ?? 0,
       hadFlask: consumables.flask,

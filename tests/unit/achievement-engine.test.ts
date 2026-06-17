@@ -11,6 +11,7 @@ function score(over: Partial<NightScore> = {}): NightScore {
     role: MainRole.DPS,
     parseAvg: 80,
     deaths: 0,
+    totalDeaths: 0,
     interrupts: 0,
     dispels: 0,
     hadFlask: false,
@@ -96,19 +97,19 @@ describe("achievement engine — effort & utility", () => {
   });
 });
 
-describe("achievement engine — Floor Inspector (most deaths, min-3 floor)", () => {
+describe("achievement engine — Floor Inspector (most TOTAL deaths, min-3 floor)", () => {
   it("does NOT award when the top is below the death floor", () => {
     const scores = [
-      score({ characterId: "a", deaths: 2 }), // < 3 floor
-      score({ characterId: "b", deaths: 0 }),
+      score({ characterId: "a", totalDeaths: 2 }), // < 3 floor
+      score({ characterId: "b", totalDeaths: 0 }),
     ];
     expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual([]);
   });
 
   it("does NOT award when nobody died", () => {
     const scores = [
-      score({ characterId: "a", deaths: 0 }),
-      score({ characterId: "b", deaths: 0 }),
+      score({ characterId: "a", totalDeaths: 0 }),
+      score({ characterId: "b", totalDeaths: 0 }),
     ];
     expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual([]);
   });
@@ -116,24 +117,34 @@ describe("achievement engine — Floor Inspector (most deaths, min-3 floor)", ()
   it("awards the most deaths once the floor is cleared (no outlier gate)", () => {
     // 3 vs 2 — used to be no award (not an outlier); now the top wins.
     const scores = [
-      score({ characterId: "klutz", deaths: 3 }),
-      score({ characterId: "b", deaths: 2 }),
+      score({ characterId: "klutz", totalDeaths: 3 }),
+      score({ characterId: "b", totalDeaths: 2 }),
     ];
     expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual(["klutz"]);
   });
 
   it("awards a high-but-not-outlier top (5 vs 3 — used to be skipped)", () => {
     const scores = [
-      score({ characterId: "a", deaths: 5 }),
-      score({ characterId: "b", deaths: 3 }),
+      score({ characterId: "a", totalDeaths: 5 }),
+      score({ characterId: "b", totalDeaths: 3 }),
+    ];
+    expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual(["a"]);
+  });
+
+  it("scores TOTAL deaths, not kill-pull deaths (the wipe-night case)", () => {
+    // "a" died 0 times on kill pulls but wiped 8 times; "b" died twice on kills.
+    // Floor Inspector must crown "a" — wipes are the whole point of the change.
+    const scores = [
+      score({ characterId: "a", deaths: 0, totalDeaths: 8 }),
+      score({ characterId: "b", deaths: 2, totalDeaths: 2 }),
     ];
     expect(awardsFor("floor-inspector", runNightEngine(scores, ctx))).toEqual(["a"]);
   });
 
   it("breaks a top-tie deterministically (single winner)", () => {
     const scores = [
-      score({ characterId: "a", deaths: 4 }),
-      score({ characterId: "b", deaths: 4 }),
+      score({ characterId: "a", totalDeaths: 4 }),
+      score({ characterId: "b", totalDeaths: 4 }),
     ];
     const winners = awardsFor("floor-inspector", runNightEngine(scores, ctx));
     expect(winners).toHaveLength(1);
