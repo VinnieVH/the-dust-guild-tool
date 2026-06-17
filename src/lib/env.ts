@@ -14,6 +14,11 @@ const schema = z.object({
   AUTH_DISCORD_CLIENT_SECRET: z.string().min(1),
 
   // --- Optional now; required by the phase noted ---
+  // Neon unpooled endpoint, used ONLY by `migrate deploy` in the Vercel build
+  // (the running app uses the pooled DATABASE_URL). Prod-only; local dev sets
+  // neither this nor AUTH_TRUST_HOST. (Phase 6)
+  DIRECT_DATABASE_URL: z.string().url().optional(),
+  AUTH_TRUST_HOST: z.string().optional(), // Phase 6 (Auth.js behind Vercel proxy)
   OFFICER_DISCORD_IDS: z.string().optional(), // seed (1.3)
   RAID_HELPER_API_KEY: z.string().optional(), // Phase 2
   RAID_HELPER_SERVER_ID: z.string().optional(), // Phase 2

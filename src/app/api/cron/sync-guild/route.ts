@@ -4,6 +4,10 @@ import { env } from "@/lib/env.server";
 import { IntegrationError } from "@/lib/integrations/errors";
 import { syncAllGuildData } from "@/lib/services/sync-guild-data-service";
 
+// Heaviest cron: a cold backlog can touch many reports/nights, so raise from the
+// 60s Pro default to the 300s Pro max to avoid a timeout. (Phase 6)
+export const maxDuration = 300;
+
 // Cron-triggered guild refresh: attendance/streaks, zone rankings, composition —
 // all straight from WCL guild feeds, no report ingestion needed. Guarded by a
 // bearer token so only the scheduler can trigger it. The officer "refresh now"
