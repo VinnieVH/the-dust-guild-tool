@@ -42,6 +42,16 @@ export const softresSheetRepository = {
     return { id: created.id };
   },
 
+  // Set (or clear) the softres edit token for a sheet. This is the admin/edit
+  // key from the softres sheet — losing it means a raid leader can no longer
+  // edit reservations. Stored plain text; an empty value clears it (null).
+  async updateToken(id: string, token: string | null): Promise<void> {
+    await db.softresSheet.update({
+      where: { id },
+      data: { token: token && token.length > 0 ? token : null },
+    });
+  },
+
   // Remove a sheet and its reservations (FK cascade handles the children).
   // Re-linking is remove + add: the saved character_aliases reconstruct the
   // matches on the next sync, so no separate edit path is needed.

@@ -78,6 +78,35 @@ export async function addSheetAction(
   }
 }
 
+const setTokenSchema = z.object({
+  raidNightId: z.string().min(1),
+  sheetId: z.string().min(1),
+  // The softres edit token (admin key). Empty string clears it. Stored plain
+  // text — it only guards a softres sheet, which is cheap to recreate.
+  token: z.string().trim().max(200),
+});
+
+// Store (or clear) a sheet's softres edit token. This is the admin key a raid
+// leader needs to edit the soft-res sheet; we keep a copy so it can't be lost.
+export async function setTokenAction(
+  _prev: SheetActionState,
+  formData: FormData,
+): Promise<SheetActionState> {
+  if (!(await requireOfficer())) return { error: "Officers only." };
+
+  const parsed = setTokenSchema.safeParse({
+    raidNightId: formData.get("raidNightId"),
+    sheetId: formData.get("sheetId"),
+    token: formData.get("token"),
+  });
+  if (!parsed.success) return { error: "Invalid input." };
+
+  const { raidNightId, sheetId, token } = parsed.data;
+  await softresSheetRepository.updateToken(sheetId, token);
+  revalidate(raidNightId);
+  return { success: token ? "Admin key saved." : "Admin key cleared." };
+}
+
 const removeSchema = z.object({
   raidNightId: z.string().min(1),
   sheetId: z.string().min(1),

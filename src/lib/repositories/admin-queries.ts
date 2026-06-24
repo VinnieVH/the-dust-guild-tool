@@ -13,6 +13,9 @@ export interface AdminSheet {
   id: string;
   name: string;
   softresId: string;
+  // softres edit token (the sheet's admin key). Officer-only — rendered hidden
+  // behind a reveal toggle and never surfaced on member-facing pages.
+  token: string | null;
 }
 
 export interface AdminWclReport {
@@ -74,7 +77,7 @@ export async function getRaidNightForAdmin(
       date: true,
       sheets: {
         orderBy: { name: "asc" },
-        select: { id: true, name: true, softresId: true },
+        select: { id: true, name: true, softresId: true, token: true },
       },
       reports: {
         orderBy: { reportCode: "asc" },
@@ -96,6 +99,7 @@ export async function getRaidNightForAdmin(
       id: s.id,
       name: s.name,
       softresId: s.softresId,
+      token: s.token,
     })),
     reports: night.reports.map((r) => ({
       id: r.id,
