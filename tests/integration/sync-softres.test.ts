@@ -83,7 +83,7 @@ async function cleanup() {
   if (night) await db.raidNight.delete({ where: { id: night.id } });
   await db.characterAlias.deleteMany({ where: { alias: { startsWith: PFX } } });
   await db.character.deleteMany({ where: { name: { startsWith: PFX } } });
-  await db.user.deleteMany({ where: { discordId: DISCORD_ID } });
+  await db.user.deleteMany({ where: { discordId: { startsWith: PFX } } });
 }
 
 beforeEach(cleanup);
@@ -178,5 +178,83 @@ describe("officer create-from-reservation -> SR matrix credit (live DB)", () => 
     expect(after.rows[0].hasCharacter).toBe(true);
     expect(after.rows[0].done[sheetId]).toBe(true);
     expect(after).toMatchObject({ completed: 1, total: 1 });
+  });
+});
+
+describe("syncSoftres ownership self-heal (live DB)", () => {
+  // The Brotmann/Kranà prod bug: the softres reserve arrives BEFORE the
+  // reserver's raid-helper User exists, so "Create & link" produces an UNOWNED
+  // character. The matrix reads ownership from the (later-created) signup User,
+  // so the member shows "no character claimed" until sync back-fills the owner.
+  it("adopts an unowned character once the reserver's User and signup exist", async () => {
+    // Character exists but UNOWNED (born before the User, as in prod).
+    const character = await db.character.create({
+      data: { name: CHAR_NAME, class: "Warrior", spec: "Arms", mainRole: MainRole.DPS },
+    });
+    const night = await db.raidNight.create({
+      data: { raidHelperEventId: `${PFX}evt`, title: `${PFX}night`, date: new Date("2026-06-12T18:00:00Z") },
+    });
+    const sheet = await db.softresSheet.create({
+      data: { raidNightId: night.id, name: "SSC", softresId: `${PFX}softres` },
+    });
+    const src = new FakeReserveSource([reservation(CHAR_NAME)]);
+
+    // First sync: character matches by name, but no User for the dId yet -> the
+    // reservation links, the character stays unowned, nothing adopted.
+    const first = await syncSoftres(src, reservationRepository, [{ sheetId: sheet.id, softresId: `${PFX}softres` }]);
+    expect(first).toMatchObject({ matched: 1, adopted: 0 });
+    expect((await db.character.findUnique({ where: { id: character.id }, select: { userId: true } }))?.userId).toBeNull();
+
+    // The reserver's User + confirmed signup appear (raid-helper sync).
+    const user = await db.user.create({
+      data: { discordId: DISCORD_ID, discordName: `${PFX}user` },
+    });
+    await db.signup.create({
+      data: { raidNightId: night.id, userId: user.id, status: "CONFIRMED", specSignedAs: "Arms", role: MainRole.DPS, characterName: CHAR_NAME, class: "Warrior" },
+    });
+
+    // The matrix still shows the member uncredited (the reported symptom).
+    const before = buildOverview(await getOverviewData(night.id));
+    expect(before.rows[0].hasCharacter).toBe(false);
+
+    // Next softres sync self-heals: it adopts the unowned character to the User.
+    const second = await syncSoftres(src, reservationRepository, [{ sheetId: sheet.id, softresId: `${PFX}softres` }]);
+    expect(second).toMatchObject({ matched: 1, adopted: 1 });
+    expect((await db.character.findUnique({ where: { id: character.id }, select: { userId: true } }))?.userId).toBe(user.id);
+
+    // ...and the matrix now credits the member.
+    const after = buildOverview(await getOverviewData(night.id));
+    expect(after.rows[0].hasCharacter).toBe(true);
+    expect(after.rows[0].done[sheet.id]).toBe(true);
+
+    // Idempotent: a third sync adopts nothing more and keeps the owner.
+    const third = await syncSoftres(src, reservationRepository, [{ sheetId: sheet.id, softresId: `${PFX}softres` }]);
+    expect(third.adopted).toBe(0);
+    expect((await db.character.findUnique({ where: { id: character.id }, select: { userId: true } }))?.userId).toBe(user.id);
+  });
+
+  it("never reassigns a character an officer already owns", async () => {
+    // Two users; the character is owned by the FIRST (officer override), but the
+    // reservation's dId points at the SECOND. Self-heal must not move it.
+    const officerUser = await db.user.create({
+      data: { discordId: `${PFX}officer`, discordName: `${PFX}officer` },
+    });
+    const character = await db.character.create({
+      data: { name: CHAR_NAME, class: "Warrior", spec: "Arms", mainRole: MainRole.DPS, userId: officerUser.id },
+    });
+    await db.user.create({ data: { discordId: DISCORD_ID, discordName: `${PFX}user` } });
+    const night = await db.raidNight.create({
+      data: { raidHelperEventId: `${PFX}evt`, title: `${PFX}night`, date: new Date("2026-06-12T18:00:00Z") },
+    });
+    const sheet = await db.softresSheet.create({
+      data: { raidNightId: night.id, name: "SSC", softresId: `${PFX}softres` },
+    });
+    const src = new FakeReserveSource([reservation(CHAR_NAME)]);
+
+    const res = await syncSoftres(src, reservationRepository, [{ sheetId: sheet.id, softresId: `${PFX}softres` }]);
+    expect(res.adopted).toBe(0);
+    expect((await db.character.findUnique({ where: { id: character.id }, select: { userId: true } }))?.userId).toBe(officerUser.id);
+
+    await db.user.deleteMany({ where: { discordId: `${PFX}officer` } });
   });
 });

@@ -30,6 +30,23 @@ export const reservationRepository: SoftresSyncStore = {
     return rows.map((r) => r.id);
   },
 
+  async assignOwnerIfUnowned(characterId, discordId) {
+    const user = await db.user.findUnique({
+      where: { discordId },
+      select: { id: true },
+    });
+    if (!user) return false; // reserver's User doesn't exist yet — heal next sync.
+
+    // Conditional update: the `userId: null` guard makes this assign-once and
+    // race-safe — it can never overwrite an officer-set owner. count===0 means
+    // already owned (by anyone), so nothing changed.
+    const { count } = await db.character.updateMany({
+      where: { id: characterId, userId: null },
+      data: { userId: user.id },
+    });
+    return count > 0;
+  },
+
   async upsertReservation({
     sheetId,
     rawName,

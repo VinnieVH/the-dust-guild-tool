@@ -25,12 +25,30 @@ export type ReservationResolution =
 // NEVER creates characters (a reservation lacks an honest spec/role) and NEVER
 // overwrites an officer's resolution — character creation + role assignment are
 // officer queue actions (implementation-plan §3.4).
+//
+// ONE exception (the self-heal below): sync MAY fill an UNOWNED character's owner
+// from the reserver's dId. This never reassigns an existing owner, so it can't
+// clobber an officer override — same guard linkReservation already uses. It
+// exists because a character can be born unowned: when a softres reserve arrives
+// before the raid-helper signup creates the reserver's (stubbed) User, the
+// officer's "Create & link" runs with no User to attribute to. The matrix reads
+// ownership from the signup's User, so without this back-fill the member shows
+// "no character claimed" forever (sync re-links the reservation but never the
+// owner). Heals on the next sync once the User exists.
 export interface SoftresSyncStore {
   /** Exact character name or confirmed alias -> character id, else null. */
   findCharacterIdByNameOrAlias(name: string): Promise<string | null>;
 
   /** Character ids owned by a Discord user (for the dId typo-suggestion tier). */
   listCharacterIdsByDiscordId(discordId: string): Promise<string[]>;
+
+  /**
+   * Self-heal an UNOWNED character's owner from the reserver's Discord id.
+   * No-op unless the character has no owner AND a User exists for `discordId`.
+   * NEVER reassigns an existing owner (preserves the officer-override invariant).
+   * Returns true iff it actually assigned an owner.
+   */
+  assignOwnerIfUnowned(characterId: string, discordId: string): Promise<boolean>;
 
   /**
    * Upsert a reservation by (sheetId, rawName). Stores rawName/class/dId/items/
@@ -58,6 +76,7 @@ export interface SoftresSyncResult {
   matched: number; // reservations linked to a character (exact/alias)
   suggested: number; // reservations with a dId-based suggestion, awaiting confirm
   unmatched: number; // reservations with no link -> officer queue
+  adopted: number; // unowned matched characters back-filled with an owner (self-heal)
 }
 
 // Resolve one reservation's rawName to a character, link-only.
@@ -96,6 +115,7 @@ export async function syncSoftres(
     matched: 0,
     suggested: 0,
     unmatched: 0,
+    adopted: 0,
   };
 
   for (const sheet of sheets) {
@@ -120,6 +140,17 @@ export async function syncSoftres(
       if (resolution.kind === "matched") result.matched += 1;
       else if (resolution.kind === "suggested") result.suggested += 1;
       else result.unmatched += 1;
+
+      // Self-heal ownership: a matched character may be unowned (born before its
+      // reserver's User existed). Back-fill the owner from the dId so the member
+      // gets SR-matrix credit. No-op when already owned or no User for the dId.
+      if (resolution.kind === "matched" && res.discordId) {
+        const adopted = await store.assignOwnerIfUnowned(
+          resolution.characterId,
+          res.discordId,
+        );
+        if (adopted) result.adopted += 1;
+      }
     }
   }
 

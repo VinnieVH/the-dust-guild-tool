@@ -48,7 +48,8 @@ export async function syncNightAction(
     return {
       success:
         `Synced ${result.reservations} reservations ` +
-        `(${result.matched} matched, ${result.suggested} suggested, ${result.unmatched} unmatched).`,
+        `(${result.matched} matched, ${result.suggested} suggested, ${result.unmatched} unmatched)` +
+        (result.adopted ? `, auto-linked ${result.adopted} to their member.` : "."),
     };
   } catch (err) {
     const message = err instanceof IntegrationError ? err.message : "Sync failed";

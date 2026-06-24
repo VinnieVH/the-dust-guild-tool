@@ -67,7 +67,8 @@ export async function addSheetAction(
     return {
       success:
         `Added “${name}”. Synced ${result.reservations} reservations ` +
-        `(${result.matched} matched, ${result.suggested} suggested, ${result.unmatched} unmatched).`,
+        `(${result.matched} matched, ${result.suggested} suggested, ${result.unmatched} unmatched)` +
+        (result.adopted ? `, auto-linked ${result.adopted} to their member.` : "."),
     };
   } catch (err) {
     const message = err instanceof IntegrationError ? err.message : "Sheet sync failed";
